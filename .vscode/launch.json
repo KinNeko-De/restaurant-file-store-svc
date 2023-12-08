@@ -9,6 +9,8 @@
           "program": "${workspaceFolder}/cmd/file-store-svc/main.go",
           "showLog": true,
           "env": {
+            "OTEL_SERVICE_NAME": "restaurant.file-store-svc",
+            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "otel-collector:4317",
           }
       },
       {
@@ -20,6 +22,8 @@
         "showLog": true,
         "console": "integratedTerminal",
         "env": {
+          "OTEL_SERVICE_NAME": "restaurant.file-store-local",
+          "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "iamnotthere:4317",
         }
     },
   ]
