@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/kinneko-de/restaurant-document-generate-svc/build"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -146,60 +144,11 @@ func createMetrics(provider *metric.MeterProvider) error {
 	// I decided to use the service name here as scope because this service is a microservice. one sccope per service approach.
 	meter = provider.Meter(config.OtelServiceName, api.WithInstrumentationVersion(version))
 
-	var err error
-	errorTemplate := "failed to initialize metric '%v' %w"
-	previewRequested, err = meter.Int64Counter(
-		MetricNameDocumentPreviewRequested,
-		api.WithDescription(MetricDescriptionDocumentPreviewRequested))
-	if err != nil {
-		return fmt.Errorf(errorTemplate, MetricNameDocumentPreviewRequested, err)
-	}
-	previewDelivered, err = meter.Int64Counter(
-		MetricNameDocumentPreviewDelivered,
-		api.WithDescription(MetricDescriptionDocumentPreviewDelivered))
-	if err != nil {
-		return fmt.Errorf(errorTemplate, MetricNameDocumentPreviewDelivered, err)
-	}
-
-	documentGenerateSuccessful, err = meter.Int64Counter(
-		MetricNameDocumentGenerateSuccessful,
-		api.WithDescription(MetricDescriptionDocumentGenerateSuccessful))
-	if err != nil {
-		return fmt.Errorf(errorTemplate, MetricNameDocumentGenerateSuccessful, err)
-	}
-	documentGenerateFailed, err = meter.Int64Counter(
-		MetricNameDocumentGenerateFailed,
-		api.WithDescription(MetricDescriptionDocumentGenerateFailed))
-	if err != nil {
-		return fmt.Errorf(errorTemplate, MetricNameDocumentGenerateFailed, err)
-	}
-
-	documentGenerateDuration, err = meter.Float64Histogram(
-		MetricNameDocumentGenerateDuration,
-		api.WithDescription(MetricDescriptionDocumentGenerateDuration),
-		api.WithUnit("ms"))
-	if err != nil {
-		return fmt.Errorf(errorTemplate, MetricNameDocumentGenerateDuration, err)
-	}
+	// var err error
+	// errorTemplate := "failed to initialize metric '%v' %w"
+	// define metrics
 
 	return nil
-}
-
-func PreviewRequested() {
-	previewRequested.Add(ctx, 1)
-}
-
-func PreviewDelivered() {
-	previewDelivered.Add(ctx, 1)
-}
-
-func DocumentGenerated(documentType string, duration time.Duration, err error) {
-	if err != nil {
-		documentGenerateFailed.Add(ctx, 1, api.WithAttributes(attribute.Key(MetricAttributeDocumentType).String(documentType)))
-	} else {
-		documentGenerateSuccessful.Add(ctx, 1, api.WithAttributes(attribute.Key(MetricAttributeDocumentType).String(documentType)))
-		documentGenerateDuration.Record(ctx, float64(duration.Milliseconds()), api.WithAttributes(attribute.Key(MetricAttributeDocumentType).String(documentType)))
-	}
 }
 
 func ForceFlush() {
