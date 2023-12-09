@@ -43,9 +43,4 @@ func TestInitializeMetrics_ConfigIsComplete(t *testing.T) {
 	assert.NotNil(t, provider)
 	assert.NotNil(t, createdProvider)
 	assert.NotNil(t, meter)
-	assert.NotNil(t, previewRequested)
-	assert.NotNil(t, previewDelivered)
-	assert.NotNil(t, documentGenerateSuccessful)
-	assert.NotNil(t, documentGenerateFailed)
-	assert.NotNil(t, documentGenerateDuration)
 }

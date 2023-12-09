@@ -35,16 +35,11 @@ const MetricDescriptionDocumentGenerateDuration = "The duration of the document 
 const MetricAttributeDocumentType = "document_type"
 
 var (
-	config                     otelConfig
-	version                    = "0.2.0"
-	ctx                        = context.Background()
-	provider                   *metric.MeterProvider
-	meter                      api.Meter
-	previewRequested           api.Int64Counter
-	previewDelivered           api.Int64Counter
-	documentGenerateSuccessful api.Int64Counter
-	documentGenerateFailed     api.Int64Counter
-	documentGenerateDuration   api.Float64Histogram
+	config   otelConfig
+	version  = "0.2.0"
+	ctx      = context.Background()
+	provider *metric.MeterProvider
+	meter    api.Meter
 )
 
 func InitializeMetrics() (*metric.MeterProvider, error) {
