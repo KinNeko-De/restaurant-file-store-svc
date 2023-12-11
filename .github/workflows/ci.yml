@@ -1,0 +1,101 @@
+on:
+  push:
+    paths-ignore:
+      - '**/**.md'
+      - 'documentation/**'
+
+env:
+  MAJOR_MINOR_PATCH: 0.0.1
+  GIN_MODE: release
+  MAIN_PACKAGE: 'cmd/file-store-svc/main.go'
+
+concurrency: ci-${{ github.ref }}
+
+name: restaurant-file-store-svc-ci
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '^1.21.0'
+      - name: "Installed go version"
+        run: go version
+      - uses: actions/checkout@v3
+      - name: Version suffix
+        id: version_suffix
+        run: |
+          if [[ ${{ github.event_name }} == 'pull_request' ]]; then
+            echo 'for pull request pipeline'
+            USE=true
+            SUFFIX=${GITHUB_HEAD_REF##*/}.${{github.run_number}}
+            EXTENSION="-${SUFFIX}"
+          else
+            if [[ ${{ github.ref }} == "refs/heads/${{ github.event.repository.default_branch }}" ]]; then
+              echo 'for default branch pipeline'
+              USE=false
+              SUFFIX=''
+              EXTENSION=''
+          else
+              echo 'for feature branch pipeline'
+              USE=true
+              SUFFIX=${GITHUB_REF##*/}.${{github.run_number}}
+              EXTENSION="-${SUFFIX}"
+            fi
+          fi
+          echo 'use_version_suffix' $USE
+          echo 'version_suffix: ' $SUFFIX
+          echo "use_version_suffix=$USE" >> $GITHUB_OUTPUT
+          echo "version_suffix=$SUFFIX" >> $GITHUB_OUTPUT
+          echo "extension=$EXTENSION" >> $GITHUB_OUTPUT
+      - name: Semantic version
+        id: semantic_version
+        run: |
+          SEMANTIC_VERSION="${{ env.MAJOR_MINOR_PATCH }}"
+          SEMANTIC_VERSION="${SEMANTIC_VERSION}${{ steps.version_suffix.outputs.extension }}"
+          echo 'MAJOR_MINOR_PATCH: ' $MAJOR_MINOR_PATCH
+          echo 'SEMANTIC_VERSION: ' $SEMANTIC_VERSION
+          echo "semantic_version=$SEMANTIC_VERSION" >> $GITHUB_OUTPUT
+          echo "major_minor_patch=$MAJOR_MINOR_PATCH" >> $GITHUB_OUTPUT
+      - name: Write version txt
+        id: version_txt
+        run: |
+          tee build/version.txt <<< ${{ steps.semantic_version.outputs.semantic_version }}
+      - name: "Build"
+        run: |
+          go build -o bin/app ./${{ env.MAIN_PACKAGE }}
+      - name: "Test"
+        run: |
+          go test ./... -race -coverpkg=all -coverprofile=coverage.out -timeout 5m
+      - name: "Exclude codecoverage"
+        run: |
+          grep -v -E -f .covignore coverage.out > coverage.filtered.out
+          mv coverage.filtered.out coverage.out
+      - name: "Code coverage"
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+      - name: "Build artifacts"
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./build/dockerfile
+          push: false
+          tags: ${{ steps.semantic_version.outputs.semantic_version }} # on push later
+      - name: Create semantic versioning git tag for golang
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "refs/tags/v${{ steps.semantic_version.outputs.semantic_version }}",
+              sha: context.sha
+            })

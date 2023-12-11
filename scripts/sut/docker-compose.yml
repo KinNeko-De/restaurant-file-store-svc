@@ -1,0 +1,33 @@
+version: '3.9'
+name: restaurant-file-store-svc
+
+services:
+  restaurant-file-store-svc:
+    image: restaurant-file-store-svc
+    networks:
+      - project-network
+    container_name: restaurant-file-store-svc
+    build:
+      dockerfile: ../../build/dockerfile
+    ports:
+      - "42985:3110"
+    environment:
+      "OTEL_SERVICE_NAME": "restaurant.file-store-svc"
+      "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "otel-collector:4317"
+
+    volumes:
+      - ./log/:/app/log/
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib
+    networks:
+      - project-network
+    container_name: otel-collector
+    volumes:
+    - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - 13133:13133 # health_check extension
+      - 4317:4317 # OTLP gRPC receiver
+networks:
+  project-network:
+    name: restaurant
+    external: true
