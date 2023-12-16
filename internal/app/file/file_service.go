@@ -2,7 +2,9 @@ package file
 
 import (
 	"io"
+	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"time"
 
@@ -38,6 +40,11 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 		return err
 	}
 	name := metaData.Name
+	extension := filepath.Ext(name)
+
+	fileId := uuid.New()
+	var size uint64 = 0
+	sniff := make([]byte, 512)
 
 	// Create a new file
 	f, err := os.Create(name)
@@ -47,7 +54,6 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	defer f.Close()
 
 	for {
-		// The client has finished sending data
 		finished, chunkMessage, err := receiveChunk(stream)
 		if finished {
 			break
@@ -56,27 +62,32 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 			return err
 		}
 
+		bytes := chunkMessage.Chunk
+		copy(sniff[size:], bytes)
+		size += uint64(len(chunkMessage.Chunk))
+
 		_, err = f.Write(chunkMessage.Chunk)
 		if err != nil {
 			return status.Error(codes.Internal, "failed to write chunk to file")
 		}
 	}
 
-	// Send the response to the client
-	fileId := uuid.New()
-	// todo read metadata from file
+	contentType := http.DetectContentType(sniff[:size])
 
-	contractFileId, err := apiProtobuf.ToProtobuf(fileId)
+	fileUuid, err := apiProtobuf.ToProtobuf(fileId)
+	if err != nil {
+		return status.Error(codes.Internal, "failed to convert google uuid to protobuf uuid")
+	}
 	var response = &apiRestaurantFile.StoreFileResponse{
 		StoredFile: &apiRestaurantFile.StoredFile{
-			Id:       contractFileId,
+			Id:       fileUuid,
 			Revision: 1,
 		},
 		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
 			CreatedAt: timestamppb.New(time.Now()),
-			Size:      1212,
-			MediaType: "image/jpeg",
-			Extension: "jpg",
+			Size:      size,
+			MediaType: contentType,
+			Extension: extension,
 		},
 	}
 	err = stream.SendAndClose(response)
