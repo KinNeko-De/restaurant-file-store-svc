@@ -21,6 +21,17 @@ type FileServiceServer struct {
 	apiRestaurantFile.UnimplementedFileServiceServer
 }
 
+// - receive filename
+// - read extension
+// - create file in storage
+// - receive chunk
+// - write chunk to file
+// - write chunk to snifarray if snifarray < 512 byte
+// - increase size
+// - receive chunk gain until end
+// - create file id
+// - write new document to database
+// - write response
 func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_StoreFileServer) error {
 	metaData, err := receiveMetadata(stream)
 	if err != nil {
