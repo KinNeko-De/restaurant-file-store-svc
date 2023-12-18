@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/testing/fixture"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -47,7 +49,7 @@ func TestStoreFile(t *testing.T) {
 	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
 	var chunk = &v1.StoreFileRequest{
 		File: &v1.StoreFileRequest_Chunk{
-			Chunk: []byte{116, 101, 115, 116}, // TODO test.txt with content "test". extract to fixture
+			Chunk: fixture.TextFile(),
 		},
 	}
 	mockStream.EXPECT().Recv().Return(chunk, nil).Times(1)
@@ -59,21 +61,8 @@ func TestStoreFile(t *testing.T) {
 			response.GetStoredFileMetadata().GetMediaType() == "text/plain; charset=utf-8" &&
 			response.GetStoredFileMetadata().GetExtension() == ".txt"
 	})).Return(nil).Times(1)
-	/*
-		mockStream.EXPECT().SendAndClose(&v1.StoreFileResponse{
-			StoredFile: &v1.StoredFile{
-				Id:       &apiProtobuf.Uuid{Value: "test"},
-				Revision: 1,
-			},
-			StoredFileMetadata: &v1.StoredFileMetadata{
-				CreatedAt: timestamppb.Now(),
-				Size:      4,
-				MediaType: "text/plain; charset=utf-8",
-				Extension: ".txt",
-			},
-		})
-	*/
 
 	server := FileServiceServer{}
-	server.StoreFile(mockStream)
+	actualError := server.StoreFile(mockStream)
+	assert.Nil(t, actualError)
 }
