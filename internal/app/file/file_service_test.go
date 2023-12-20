@@ -27,7 +27,7 @@ func TestArray(t *testing.T) {
 }
 
 func TestFile(t *testing.T) {
-	file, _ := os.Open("test.txt")
+	file, _ := os.Open("protobuf.pdf")
 	stat, _ := file.Stat()
 	bs := make([]byte, stat.Size())
 	_, _ = bufio.NewReader(file).Read(bs)
@@ -36,9 +36,14 @@ func TestFile(t *testing.T) {
 		variable += strconv.FormatUint(uint64(b), 10)
 		variable += ", "
 	}
+
+	output, _ := os.Create("test.txt")
+	output.WriteString(variable)
+	output.Close()
+
 }
 
-func TestStoreFile(t *testing.T) {
+func TestStoreFile_TextFile(t *testing.T) {
 	mockStream := NewFileService_StoreFileServer(t)
 
 	var metadata = &v1.StoreFileRequest{
@@ -60,6 +65,35 @@ func TestStoreFile(t *testing.T) {
 			response.GetStoredFileMetadata().GetSize() == 4 &&
 			response.GetStoredFileMetadata().GetMediaType() == "text/plain; charset=utf-8" &&
 			response.GetStoredFileMetadata().GetExtension() == ".txt"
+	})).Return(nil).Times(1)
+
+	server := FileServiceServer{}
+	actualError := server.StoreFile(mockStream)
+	assert.Nil(t, actualError)
+}
+
+func TestStoreFile_PdfFile(t *testing.T) {
+	mockStream := NewFileService_StoreFileServer(t)
+
+	var metadata = &v1.StoreFileRequest{
+		File: &v1.StoreFileRequest_Name{
+			Name: "test.pdf",
+		},
+	}
+	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
+	var chunk = &v1.StoreFileRequest{
+		File: &v1.StoreFileRequest_Chunk{
+			Chunk: fixture.PdfFile(),
+		},
+	}
+	mockStream.EXPECT().Recv().Return(chunk, nil).Times(1)
+	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
+	mockStream.EXPECT().SendAndClose(mock.MatchedBy(func(response *v1.StoreFileResponse) bool {
+		// TODO ID not null and timestamp not null
+		return response.GetStoredFile().GetRevision() == 1 &&
+			response.GetStoredFileMetadata().GetSize() == 51124 &&
+			response.GetStoredFileMetadata().GetMediaType() == "application/pdf" &&
+			response.GetStoredFileMetadata().GetExtension() == ".pdf"
 	})).Return(nil).Times(1)
 
 	server := FileServiceServer{}
