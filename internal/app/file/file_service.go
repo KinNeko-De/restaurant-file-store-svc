@@ -72,11 +72,11 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 		}
 	}
 
-	n := 512
-	if size < uint64(n) {
-		n = int(size)
+	sniffByteCount := size
+	if sniffByteCount > 512 {
+		sniffByteCount = 512
 	}
-	contentType := http.DetectContentType(sniff[:n])
+	contentType := http.DetectContentType(sniff[:sniffByteCount])
 
 	fileUuid, err := apiProtobuf.ToProtobuf(fileId)
 	if err != nil {

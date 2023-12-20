@@ -40,7 +40,6 @@ func TestFile(t *testing.T) {
 	output, _ := os.Create("test.txt")
 	output.WriteString(variable)
 	output.Close()
-
 }
 
 func TestStoreFile_TextFile(t *testing.T) {
