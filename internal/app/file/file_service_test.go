@@ -1,10 +1,7 @@
 package file
 
 import (
-	"bufio"
 	"io"
-	"os"
-	"strconv"
 	"testing"
 
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
@@ -26,6 +23,7 @@ func TestArray(t *testing.T) {
 	target = target[:size]
 }
 
+/*
 func TestFile(t *testing.T) {
 	file, _ := os.Open("protobuf.pdf")
 	stat, _ := file.Stat()
@@ -41,6 +39,7 @@ func TestFile(t *testing.T) {
 	output.WriteString(variable)
 	output.Close()
 }
+*/
 
 func TestStoreFile_TextFile(t *testing.T) {
 	mockStream := NewFileService_StoreFileServer(t)

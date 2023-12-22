@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/health"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/metric"
@@ -13,6 +14,12 @@ import (
 func main() {
 	logger.SetLogLevel(logger.LogLevel)
 	logger.Logger.Info().Msg("Starting application.")
+
+	err := file.Storage.Initialize()
+	if err != nil {
+		logger.Logger.Error().Err(err).Msg("failed to initialize storage")
+		os.Exit(45)
+	}
 
 	provider, err := metric.InitializeMetrics()
 	if err != nil {

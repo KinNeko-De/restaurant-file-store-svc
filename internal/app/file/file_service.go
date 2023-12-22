@@ -3,7 +3,6 @@ package file
 import (
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"reflect"
 	"time"
@@ -17,7 +16,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var _ apiRestaurantFile.FileServiceServer = &FileServiceServer{}
+var (
+	_ apiRestaurantFile.FileServiceServer = &FileServiceServer{}
+)
 
 type FileServiceServer struct {
 	apiRestaurantFile.UnimplementedFileServiceServer
@@ -46,12 +47,10 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	var size uint64 = 0
 	sniff := make([]byte, 512)
 
-	// Create a new file
-	f, err := os.Create(name)
+	f, err := Storage.CreateFile(stream.Context(), fileId, 0)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	for {
 		finished, chunkMessage, err := receiveChunk(stream)
@@ -77,6 +76,7 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 		sniffByteCount = 512
 	}
 	contentType := http.DetectContentType(sniff[:sniffByteCount])
+	f.Close()
 
 	fileUuid, err := apiProtobuf.ToProtobuf(fileId)
 	if err != nil {
