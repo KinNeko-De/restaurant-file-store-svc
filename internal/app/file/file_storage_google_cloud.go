@@ -32,5 +32,6 @@ func (g *GoogleCloudStorage) CreateFile(ctx context.Context, revisionId uuid.UUI
 	object := bucket.Object(revisionId.String())
 	writer := object.NewWriter(ctx)
 	writer.ChunkSize = chunkSize
+	// TODO: checksum control
 	return writer, nil
 }
