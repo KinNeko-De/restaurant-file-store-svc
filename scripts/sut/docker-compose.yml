@@ -2,21 +2,24 @@ version: '3.9'
 name: restaurant-file-store-svc
 
 services:
-  restaurant-file-store-svc:
-    image: restaurant-file-store-svc
+  mongodb:
+    image: mongo:latest
     networks:
       - project-network
-    container_name: restaurant-file-store-svc
-    build:
-      dockerfile: ../../build/dockerfile
-    ports:
-      - "42985:3110"
+    container_name: restaurant-file-store-db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongodb:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
     environment:
-      "OTEL_SERVICE_NAME": "restaurant.file-store-svc"
-      "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "otel-collector:4317"
-
+      MONGO_INITDB_ROOT_USERNAME: rootuser
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
     volumes:
-      - ./log/:/app/log/
+      - /data/db
+    ports:
+      - 27017:27017
   otel-collector:
     image: otel/opentelemetry-collector-contrib
     networks:
@@ -27,6 +30,23 @@ services:
     ports:
       - 13133:13133 # health_check extension
       - 4317:4317 # OTLP gRPC receiver
+  restaurant-file-store-svc:
+    image: restaurant-file-store-svc
+    networks:
+      - project-network
+    container_name: restaurant-file-store-svc
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    build:
+      dockerfile: ../../build/dockerfile
+    ports:
+      - "42985:3110"
+    environment:
+      "OTEL_SERVICE_NAME": "restaurant.file-store-svc"
+      "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "otel-collector:4317"
+    volumes:
+      - ./log/:/app/log/
 networks:
   project-network:
     name: restaurant

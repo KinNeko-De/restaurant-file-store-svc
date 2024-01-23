@@ -3,8 +3,6 @@ package server
 import (
 	"net"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/rs/zerolog/log"
 
@@ -18,6 +16,7 @@ import (
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/health"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/shutdown"
 )
 
 func StartGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan struct{}, port string) {
@@ -32,8 +31,8 @@ func StartGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan str
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	health.Initialize(healthServer)
 
-	var gracefulStop = make(chan os.Signal, 1)
-	signal.Notify(gracefulStop, syscall.SIGTERM, syscall.SIGINT)
+	gracefulStop := shutdown.CreateGracefulStop()
+
 	logger.Logger.Debug().Msg("starting grpc server")
 
 	go func() {

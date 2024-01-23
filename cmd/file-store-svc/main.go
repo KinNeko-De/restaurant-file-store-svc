@@ -7,6 +7,7 @@ import (
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/health"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/metric"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/persistence"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server"
 )
 
@@ -14,20 +15,30 @@ func main() {
 	logger.SetLogLevel(logger.LogLevel)
 	logger.Logger.Info().Msg("Starting application.")
 
+	ctx := context.Background()
+
 	provider, err := metric.InitializeMetrics()
 	if err != nil {
 		logger.Logger.Error().Err(err).Msg("failed to initialize metrics")
 		os.Exit(40)
 	}
+
 	grpcServerStopped := make(chan struct{})
 	grpcServerStarted := make(chan struct{})
+	databaseStopped := make(chan struct{})
+	databaseConnected := make(chan struct{})
 	go server.StartGrpcServer(grpcServerStopped, grpcServerStarted, ":3110")
+	go persistence.ConnectToDatabase(ctx, databaseStopped, databaseConnected)
 
-	<-grpcServerStarted
-	health.Ready()
+	go func() {
+		<-databaseConnected
+		<-grpcServerStarted
+		health.Ready()
+	}()
 
+	<-databaseStopped
 	<-grpcServerStopped
-	provider.Shutdown(context.Background())
+	provider.Shutdown(ctx)
 	logger.Logger.Info().Msg("Application stopped.")
 	os.Exit(0)
 }
