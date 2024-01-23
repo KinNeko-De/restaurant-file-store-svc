@@ -1,4 +1,4 @@
-package persistence
+package file
 
 import (
 	"context"
@@ -7,13 +7,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/shutdown"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/persistence"
 	"go.mongodb.org/mongo-driver/mongo"
 )
-
-var FileMetadataRepository file.FileMetadataRepository
 
 func ConnectToDatabase(ctx context.Context, databaseStoped chan struct{}, databaseConnected chan struct{}) {
 	err := connectToDatabase(ctx, databaseStoped, databaseConnected)
@@ -50,7 +48,7 @@ func connectToDatabase(ctx context.Context, databaseStopped chan struct{}, datab
 		close(databaseStopped)
 	}()
 
-	if err := initializeMongoDBRepository(ctx, client); err != nil {
+	if err := initializeFileMetadataRepository(ctx, client); err != nil {
 		return err
 	}
 
@@ -60,7 +58,7 @@ func connectToDatabase(ctx context.Context, databaseStopped chan struct{}, datab
 
 func createClient(ctx context.Context) (*mongo.Client, error) {
 	uri := "mongodb://rootuser:rootpassword@mongodb:27017" // TODO: get from env
-	client, err := CreateClient(ctx, uri)
+	client, err := persistence.CreateMongoDBClient(ctx, uri)
 	if err != nil {
 		return nil, err
 	}
@@ -73,11 +71,11 @@ func createClient(ctx context.Context) (*mongo.Client, error) {
 	return client, nil
 }
 
-func initializeMongoDBRepository(ctx context.Context, client *mongo.Client) error {
+func initializeFileMetadataRepository(ctx context.Context, client *mongo.Client) error {
 	databaseName := "restaurant-file-store-db" // TODO: get from env
 
 	var err error
-	FileMetadataRepository, err = NewMongoDBRepository(ctx, client, databaseName, "files")
+	FileMetadataRepositoryInstance, err = persistence.NewMongoDBRepository(ctx, client, databaseName, "files")
 
 	return err
 }

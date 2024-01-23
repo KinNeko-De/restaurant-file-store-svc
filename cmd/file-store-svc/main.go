@@ -8,7 +8,6 @@ import (
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/health"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/metric"
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/persistence"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server"
 )
 
@@ -17,7 +16,7 @@ func main() {
 	logger.Logger.Info().Msg("Starting application.")
 	ctx := context.Background()
 
-	err := file.Storage.Initialize()
+	err := file.FileRepositoryInstance.Initialize()
 	if err != nil {
 		logger.Logger.Error().Err(err).Msg("failed to initialize storage")
 		os.Exit(45)
@@ -34,7 +33,7 @@ func main() {
 	databaseStopped := make(chan struct{})
 	databaseConnected := make(chan struct{})
 	go server.StartGrpcServer(grpcServerStopped, grpcServerStarted, ":3110")
-	go persistence.ConnectToDatabase(ctx, databaseStopped, databaseConnected)
+	go file.ConnectToDatabase(ctx, databaseStopped, databaseConnected)
 
 	go func() {
 		<-databaseConnected

@@ -13,7 +13,7 @@ type MongoDBRepository struct {
 	collection *mongo.Collection
 }
 
-func CreateClient(ctx context.Context, uri string) (*mongo.Client, error) {
+func CreateMongoDBClient(ctx context.Context, uri string) (*mongo.Client, error) {
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	return client, err
 }

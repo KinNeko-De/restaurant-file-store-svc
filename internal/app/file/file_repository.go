@@ -5,13 +5,14 @@ import (
 	"io"
 
 	"github.com/google/uuid"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/persistence"
 )
 
 var (
-	Storage FileStorage = &GoogleCloudStorage{}
+	FileRepositoryInstance FileRepository = &persistence.GoogleCloudStorage{}
 )
 
-type FileStorage interface {
+type FileRepository interface {
 	Initialize() error
 	CreateFile(ctx context.Context, fileId uuid.UUID, chunkSize int) (io.WriteCloser, error)
 }

@@ -47,7 +47,7 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	var size uint64 = 0
 	sniff := make([]byte, 512)
 
-	f, err := Storage.CreateFile(stream.Context(), fileId, 0)
+	f, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, 0)
 	if err != nil {
 		return err
 	}
