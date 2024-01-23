@@ -2,7 +2,8 @@ package file
 
 import (
 	"io"
-	"os"
+	"net/http"
+	"path/filepath"
 	"reflect"
 	"time"
 
@@ -15,7 +16,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var _ apiRestaurantFile.FileServiceServer = &FileServiceServer{}
+var (
+	_ apiRestaurantFile.FileServiceServer = &FileServiceServer{}
+)
 
 type FileServiceServer struct {
 	apiRestaurantFile.UnimplementedFileServiceServer
@@ -38,16 +41,18 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 		return err
 	}
 	name := metaData.Name
+	extension := filepath.Ext(name)
 
-	// Create a new file
-	f, err := os.Create(name)
+	fileId := uuid.New()
+	var size uint64 = 0
+	sniff := make([]byte, 512)
+
+	f, err := Storage.CreateFile(stream.Context(), fileId, 0)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	for {
-		// The client has finished sending data
 		finished, chunkMessage, err := receiveChunk(stream)
 		if finished {
 			break
@@ -56,27 +61,37 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 			return err
 		}
 
+		bytes := chunkMessage.Chunk
+		copy(sniff[size:], bytes)
+		size += uint64(len(chunkMessage.Chunk))
+
 		_, err = f.Write(chunkMessage.Chunk)
 		if err != nil {
 			return status.Error(codes.Internal, "failed to write chunk to file")
 		}
 	}
 
-	// Send the response to the client
-	fileId := uuid.New()
-	// todo read metadata from file
+	sniffByteCount := size
+	if sniffByteCount > 512 {
+		sniffByteCount = 512
+	}
+	contentType := http.DetectContentType(sniff[:sniffByteCount])
+	f.Close()
 
-	contractFileId, err := apiProtobuf.ToProtobuf(fileId)
+	fileUuid, err := apiProtobuf.ToProtobuf(fileId)
+	if err != nil {
+		return status.Error(codes.Internal, "failed to convert google uuid to protobuf uuid")
+	}
 	var response = &apiRestaurantFile.StoreFileResponse{
 		StoredFile: &apiRestaurantFile.StoredFile{
-			Id:       contractFileId,
+			Id:       fileUuid,
 			Revision: 1,
 		},
 		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
 			CreatedAt: timestamppb.New(time.Now()),
-			Size:      1212,
-			MediaType: "image/jpeg",
-			Extension: "jpg",
+			Size:      size,
+			MediaType: contentType,
+			Extension: extension,
 		},
 	}
 	err = stream.SendAndClose(response)

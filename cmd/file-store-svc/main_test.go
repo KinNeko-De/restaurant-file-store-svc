@@ -52,7 +52,7 @@ func TestMain_ApplicationListenToSIGTERM_AndGracefullyShutdown(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	cmd.Process.Signal(syscall.SIGTERM)
 	err = cmd.Wait()
-	require.Nil(t, err)
+	assert.Nil(t, err)
 	exitCode := cmd.ProcessState.ExitCode()
 	assert.Equal(t, 0, exitCode)
 }
