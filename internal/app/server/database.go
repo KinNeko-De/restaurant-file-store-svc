@@ -1,4 +1,4 @@
-package file
+package server
 
 import (
 	"context"
@@ -7,9 +7,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/shutdown"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/persistence"
+
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -75,7 +77,7 @@ func initializeFileMetadataRepository(ctx context.Context, client *mongo.Client)
 	databaseName := "restaurant-file-store-db" // TODO: get from env
 
 	var err error
-	FileMetadataRepositoryInstance, err = persistence.NewMongoDBRepository(ctx, client, databaseName, "files")
+	file.FileMetadataRepositoryInstance, err = persistence.NewMongoDBRepository(ctx, client, databaseName, "files")
 
 	return err
 }

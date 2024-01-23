@@ -33,7 +33,7 @@ func main() {
 	databaseStopped := make(chan struct{})
 	databaseConnected := make(chan struct{})
 	go server.StartGrpcServer(grpcServerStopped, grpcServerStarted, ":3110")
-	go file.ConnectToDatabase(ctx, databaseStopped, databaseConnected)
+	go server.ConnectToDatabase(ctx, databaseStopped, databaseConnected)
 
 	go func() {
 		<-databaseConnected
