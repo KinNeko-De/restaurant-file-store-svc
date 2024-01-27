@@ -3,7 +3,7 @@ docker network create restaurant
 
 call file-store-svc-build.cmd
 
-docker compose -f sut/docker-compose.yml build
+docker compose -f sut/sut-compose.yml build
 
 docker run -v %cd%\sut\log/:/app/log/ -t -i --name restaurant-file-store-svc restaurant-file-store-svc bash
 

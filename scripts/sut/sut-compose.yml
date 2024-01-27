@@ -2,6 +2,10 @@ version: '3.9'
 name: restaurant-file-store-svc
 
 services:
+  mongodb:
+    extends:
+      file: ../../scripts/sut/database-compose.yml
+      service: mongodb
   restaurant-file-store-svc:
     image: restaurant-file-store-svc
     networks:
