@@ -37,9 +37,9 @@ func main() {
 	}()
 
 	<-grpcServerStopped
+	<-databaseDisconnected
 	provider.Shutdown(ctx)
 	cancel()
-	<-databaseDisconnected
 	logger.Logger.Info().Msg("Application stopped.")
 	os.Exit(0)
 }
