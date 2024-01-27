@@ -58,12 +58,10 @@ func createClient(ctx context.Context) (*mongo.Client, error) {
 		return nil, err
 	}
 
-	/*
-		err = client.Ping(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-	*/
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return client, nil
 }
