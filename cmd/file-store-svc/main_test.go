@@ -113,7 +113,7 @@ func waitForStatus(t *testing.T, serviceToCheck string, expectedStatus healthV1.
 	client := healthV1.NewHealthClient(conn)
 	count := 0
 	const iterations = 200
-	const interval = time.Millisecond * 10
+	const interval = time.Millisecond * 50
 	var healthResponse *healthV1.HealthCheckResponse
 	var err error
 	for count < iterations {
