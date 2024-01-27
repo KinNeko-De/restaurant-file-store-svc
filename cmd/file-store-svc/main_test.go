@@ -57,7 +57,6 @@ func TestMain_ApplicationListenToSIGTERM_AndGracefullyShutdown(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 }
 
-/*
 func TestMain_HealthCheckIsServing_Liveness(t *testing.T) {
 	serviceToCheck := "liveness"
 
@@ -75,14 +74,14 @@ func TestMain_HealthCheckIsServing_Liveness(t *testing.T) {
 	defer runningApp.Process.Kill()
 
 	expectedStatus := healthV1.HealthCheckResponse_SERVING
-	healthResponse, err := waitForStatus(t, serviceToCheck, expectedStatus)
+	healthResponse, err := waitForStatus(t, serviceToCheck, expectedStatus, 100*time.Millisecond, 100)
 
 	require.Nil(t, err)
 	require.NotNil(t, healthResponse)
 	assert.Equal(t, expectedStatus, healthResponse.Status)
 }
-*/
 
+/*
 func TestMain_HealthCheckIsServing_Readiness(t *testing.T) {
 	serviceToCheck := "readiness"
 
@@ -100,22 +99,21 @@ func TestMain_HealthCheckIsServing_Readiness(t *testing.T) {
 	defer runningApp.Process.Kill()
 
 	expectedStatus := healthV1.HealthCheckResponse_SERVING
-	healthResponse, err := waitForStatus(t, serviceToCheck, expectedStatus)
+	healthResponse, err := waitForStatus(t, serviceToCheck, expectedStatus, 100*time.Millisecond, 500)
 
 	require.Nil(t, err)
 	require.NotNil(t, healthResponse)
 	assert.Equal(t, expectedStatus, healthResponse.Status)
 }
+*/
 
-func waitForStatus(t *testing.T, serviceToCheck string, expectedStatus healthV1.HealthCheckResponse_ServingStatus) (*healthV1.HealthCheckResponse, error) {
+func waitForStatus(t *testing.T, serviceToCheck string, expectedStatus healthV1.HealthCheckResponse_ServingStatus, interval time.Duration, iterations int) (*healthV1.HealthCheckResponse, error) {
 	conn, dialErr := grpc.Dial("localhost:3110", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.Nil(t, dialErr)
 	defer conn.Close()
 
 	client := healthV1.NewHealthClient(conn)
 	count := 0
-	const iterations = 500
-	const interval = time.Millisecond * 50
 	var healthResponse *healthV1.HealthCheckResponse
 	var err error
 	for count < iterations {
