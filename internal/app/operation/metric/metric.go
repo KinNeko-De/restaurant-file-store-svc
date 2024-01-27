@@ -22,27 +22,14 @@ import (
 const ServiceNameEnv = "OTEL_SERVICE_NAME"
 const OtelMetricEndpointEnv = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
 
-const MetricNameDocumentPreviewRequested = "restaurant.documents.preview.requested"
-const MetricDescriptionDocumentPreviewRequested = "Sum of requested document previews"
-const MetricNameDocumentPreviewDelivered = "restaurant.documents.preview.delivered"
-const MetricDescriptionDocumentPreviewDelivered = "Sum of document previews that was delivered fully to the client"
-const MetricNameDocumentGenerateSuccessful = "restaurant.documents.generate.successful"
-const MetricDescriptionDocumentGenerateSuccessful = "Sum of documents that were generated successfully"
-const MetricNameDocumentGenerateFailed = "restaurant.documents.generate.failed"
-const MetricDescriptionDocumentGenerateFailed = "Sum of documents that failed to generate due to an error"
-const MetricNameDocumentGenerateDuration = "restaurant.documents.generate.duration" // "Duration of document generation" Unit: "ms" Histogram
-const MetricDescriptionDocumentGenerateDuration = "The duration of the document generation"
-const MetricAttributeDocumentType = "document_type"
-
 var (
 	config   otelConfig
 	version  = "0.2.0"
-	ctx      = context.Background()
 	provider *metric.MeterProvider
 	meter    api.Meter
 )
 
-func InitializeMetrics() (*metric.MeterProvider, error) {
+func InitializeMetrics(ctx context.Context) (*metric.MeterProvider, error) {
 	metricLogger := zerologr.New(&logger.Logger)
 	otel.SetLogger(metricLogger)
 
@@ -51,17 +38,17 @@ func InitializeMetrics() (*metric.MeterProvider, error) {
 		return nil, err
 	}
 
-	provider, err := initializeOpenTelemetry()
+	provider, err := initializeOpenTelemetry(ctx)
 	return provider, err
 }
 
-func initializeOpenTelemetry() (*metric.MeterProvider, error) {
+func initializeOpenTelemetry(ctx context.Context) (*metric.MeterProvider, error) {
 	ressource, err := createRessource()
 	if err != nil {
 		return nil, err
 	}
 
-	readers, err := createReader()
+	readers, err := createReader(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -86,23 +73,10 @@ func createRessource() (*resource.Resource, error) {
 }
 
 func createViews() []metric.View {
-	view := metric.NewView(
-		metric.Instrument{
-			Name: MetricNameDocumentGenerateDuration,
-			Kind: metric.InstrumentKindHistogram,
-		},
-		metric.Stream{
-			Aggregation: metric.AggregationExplicitBucketHistogram{
-				NoMinMax:   true,
-				Boundaries: []float64{1000, 4000, 7000, 10000, 20000},
-			},
-		},
-	)
-
-	return []metric.View{view}
+	return []metric.View{}
 }
 
-func createReader() ([]metric.Reader, error) {
+func createReader(ctx context.Context) ([]metric.Reader, error) {
 	otelGrpcExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithInsecure(), otlpmetricgrpc.WithEndpoint(config.OtelMetricEndpoint))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize metric reader to otel collector: %w", err)
@@ -146,7 +120,7 @@ func createMetrics(provider *metric.MeterProvider) error {
 	return nil
 }
 
-func ForceFlush() {
+func ForceFlush(ctx context.Context) {
 	provider.ForceFlush(ctx)
 }
 

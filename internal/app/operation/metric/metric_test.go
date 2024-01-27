@@ -1,6 +1,7 @@
 package metric
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,7 +12,7 @@ func TestInitializeMetrics_ConfigMissing_ServiceName(t *testing.T) {
 	expectedOtelMetricEndpoint := "otel-collector:4317"
 	t.Setenv(OtelMetricEndpointEnv, expectedOtelMetricEndpoint)
 
-	createdProvider, err := InitializeMetrics()
+	createdProvider, err := InitializeMetrics(context.Background())
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), ServiceNameEnv)
@@ -22,7 +23,7 @@ func TestInitializeMetrics_ConfigMissing_OtelMetricEndpoint(t *testing.T) {
 	expectedServiceName := "expectedServiceName"
 	t.Setenv(ServiceNameEnv, expectedServiceName)
 
-	createdProvider, err := InitializeMetrics()
+	createdProvider, err := InitializeMetrics(context.Background())
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), OtelMetricEndpointEnv)
@@ -35,7 +36,7 @@ func TestInitializeMetrics_ConfigIsComplete(t *testing.T) {
 	t.Setenv(ServiceNameEnv, expectedServiceName)
 	t.Setenv(OtelMetricEndpointEnv, expectedOtelMetricEndpoint)
 
-	createdProvider, err := InitializeMetrics()
+	createdProvider, err := InitializeMetrics(context.Background())
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedServiceName, config.OtelServiceName)
