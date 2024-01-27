@@ -47,9 +47,12 @@ func connectToDatabase(ctx context.Context, databaseStopped chan struct{}, datab
 	}
 
 	go func() {
-		<-gracefulStop
-		client.Disconnect(ctx)
-		close(databaseStopped)
+		select {
+		case <-gracefulStop:
+			stopDatabase(ctx, client, databaseStopped)
+		case <-abort.Done():
+			stopDatabase(ctx, client, databaseStopped)
+		}
 	}()
 
 	if err := initializeFileMetadataRepository(ctx, client); err != nil {
@@ -58,6 +61,11 @@ func connectToDatabase(ctx context.Context, databaseStopped chan struct{}, datab
 
 	close(databaseConnected)
 	return nil
+}
+
+func stopDatabase(ctx context.Context, client *mongo.Client, databaseStopped chan struct{}) {
+	client.Disconnect(ctx)
+	close(databaseStopped)
 }
 
 func createClient(ctx context.Context) (*mongo.Client, error) {
