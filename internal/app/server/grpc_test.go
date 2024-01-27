@@ -12,7 +12,7 @@ import (
 
 func TestStartGrpcServer_ProcessAlreadyListenToPort_AppCrash(t *testing.T) {
 	if os.Getenv("EXECUTE") == "1" {
-		StartGrpcServer(make(chan struct{}), make(chan struct{}), ":3110")
+		StartGrpcServer(make(chan struct{}), make(chan struct{}), ":9999")
 		return
 	}
 
