@@ -29,6 +29,28 @@ func connectToDatabase(ctx context.Context, databaseStopped chan struct{}, datab
 	gracefulStop := shutdown.CreateGracefulStop()
 	logger.Logger.Debug().Msg("connecting to database")
 
+	client, err := tryToCreateClient(ctx, databaseStopped)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		select {
+		case <-gracefulStop:
+		case <-ctx.Done():
+			stopDatabase(ctx, client, databaseStopped)
+		}
+	}()
+
+	if err := initializeFileMetadataRepository(ctx, client); err != nil {
+		return err
+	}
+
+	close(databaseConnected)
+	return nil
+}
+
+func tryToCreateClient(ctx context.Context, databaseStopped chan struct{}) (*mongo.Client, error) {
 	timeout, cancel := context.WithTimeout(ctx, connectTimeout)
 	defer cancel()
 
@@ -40,27 +62,12 @@ func connectToDatabase(ctx context.Context, databaseStopped chan struct{}, datab
 		select {
 		case <-abort.Done():
 			close(databaseStopped)
-			return nil
+			return nil, nil
 		default:
-			return err
+			return nil, err
 		}
 	}
-
-	go func() {
-		select {
-		case <-gracefulStop:
-			stopDatabase(ctx, client, databaseStopped)
-		case <-abort.Done():
-			stopDatabase(ctx, client, databaseStopped)
-		}
-	}()
-
-	if err := initializeFileMetadataRepository(ctx, client); err != nil {
-		return err
-	}
-
-	close(databaseConnected)
-	return nil
+	return client, nil
 }
 
 func stopDatabase(ctx context.Context, client *mongo.Client, databaseStopped chan struct{}) {
