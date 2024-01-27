@@ -81,7 +81,6 @@ func TestMain_HealthCheckIsServing_Liveness(t *testing.T) {
 	assert.Equal(t, expectedStatus, healthResponse.Status)
 }
 
-/*
 func TestMain_HealthCheckIsServing_Readiness(t *testing.T) {
 	serviceToCheck := "readiness"
 
@@ -105,7 +104,6 @@ func TestMain_HealthCheckIsServing_Readiness(t *testing.T) {
 	require.NotNil(t, healthResponse)
 	assert.Equal(t, expectedStatus, healthResponse.Status)
 }
-*/
 
 func waitForStatus(t *testing.T, serviceToCheck string, expectedStatus healthV1.HealthCheckResponse_ServingStatus, interval time.Duration, iterations int) (*healthV1.HealthCheckResponse, error) {
 	conn, dialErr := grpc.Dial("localhost:3110", grpc.WithTransportCredentials(insecure.NewCredentials()))

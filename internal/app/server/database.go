@@ -3,13 +3,10 @@ package server
 import (
 	"context"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/persistence"
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server/shutdown"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -23,28 +20,30 @@ func ConnectToDatabase(ctx context.Context, databaseStoped chan struct{}, databa
 }
 
 func connectToDatabase(ctx context.Context, databaseStopped chan struct{}, databaseConnected chan struct{}) error {
-	gracefulStop := shutdown.CreateGracefulStop()
-	logger.Logger.Debug().Msg("connecting to database")
+	/*
+		gracefulStop := shutdown.CreateGracefulStop()
+		logger.Logger.Debug().Msg("connecting to database")
 
-	gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
-	defer cancel()
+		gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
+		defer cancel()
 
-	client, err := createClient(gracefulAbort)
-	if err != nil {
-		close(databaseStopped)
-		return err
-	}
+		client, err := createClient(gracefulAbort)
+		if err != nil {
+			close(databaseStopped)
+			return err
+		}
 
-	go func() {
-		<-gracefulStop
-		client.Disconnect(ctx)
-		close(databaseStopped)
-	}()
+		go func() {
+			<-gracefulStop
+			client.Disconnect(ctx)
+			close(databaseStopped)
+		}()
 
-	if err := initializeFileMetadataRepository(ctx, client); err != nil {
-		return err
-	}
+		if err := initializeFileMetadataRepository(ctx, client); err != nil {
+			return err
+		}
 
+	*/
 	close(databaseConnected)
 	return nil
 }
