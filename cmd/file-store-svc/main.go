@@ -32,6 +32,7 @@ func main() {
 	go func() {
 		<-databaseConnected
 		<-grpcServerStarted
+		logger.Logger.Info().Msg("Application started.")
 		health.Ready()
 	}()
 
