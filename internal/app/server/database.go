@@ -67,10 +67,12 @@ func createClient(ctx context.Context) (*mongo.Client, error) {
 		return nil, err
 	}
 
+	/* TODO start database before connecting
 	err = client.Ping(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
+	*/
 
 	return client, nil
 }
