@@ -21,7 +21,7 @@ func ConnectToDatabase(ctx context.Context, databaseStoped chan struct{}, databa
 	err := connectToDatabase(ctx, databaseStoped, databaseConnected)
 	if err != nil {
 		logger.Logger.Error().Err(err).Msg("failed to connect to database")
-		os.Exit(50)
+		os.Exit(51)
 	}
 }
 
