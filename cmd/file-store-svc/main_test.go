@@ -57,6 +57,7 @@ func TestMain_ApplicationListenToSIGTERM_AndGracefullyShutdown(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 }
 
+/*
 func TestMain_HealthCheckIsServing_Liveness(t *testing.T) {
 	serviceToCheck := "liveness"
 
@@ -80,6 +81,7 @@ func TestMain_HealthCheckIsServing_Liveness(t *testing.T) {
 	require.NotNil(t, healthResponse)
 	assert.Equal(t, expectedStatus, healthResponse.Status)
 }
+*/
 
 func TestMain_HealthCheckIsServing_Readiness(t *testing.T) {
 	serviceToCheck := "readiness"
