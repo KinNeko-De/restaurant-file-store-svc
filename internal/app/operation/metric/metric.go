@@ -14,25 +14,13 @@ import (
 	api "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 
 	"github.com/go-logr/zerologr"
 )
 
 const ServiceNameEnv = "OTEL_SERVICE_NAME"
 const OtelMetricEndpointEnv = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
-
-const MetricNameDocumentPreviewRequested = "restaurant.documents.preview.requested"
-const MetricDescriptionDocumentPreviewRequested = "Sum of requested document previews"
-const MetricNameDocumentPreviewDelivered = "restaurant.documents.preview.delivered"
-const MetricDescriptionDocumentPreviewDelivered = "Sum of document previews that was delivered fully to the client"
-const MetricNameDocumentGenerateSuccessful = "restaurant.documents.generate.successful"
-const MetricDescriptionDocumentGenerateSuccessful = "Sum of documents that were generated successfully"
-const MetricNameDocumentGenerateFailed = "restaurant.documents.generate.failed"
-const MetricDescriptionDocumentGenerateFailed = "Sum of documents that failed to generate due to an error"
-const MetricNameDocumentGenerateDuration = "restaurant.documents.generate.duration" // "Duration of document generation" Unit: "ms" Histogram
-const MetricDescriptionDocumentGenerateDuration = "The duration of the document generation"
-const MetricAttributeDocumentType = "document_type"
 
 var (
 	config   otelConfig
@@ -86,20 +74,7 @@ func createRessource() (*resource.Resource, error) {
 }
 
 func createViews() []metric.View {
-	view := metric.NewView(
-		metric.Instrument{
-			Name: MetricNameDocumentGenerateDuration,
-			Kind: metric.InstrumentKindHistogram,
-		},
-		metric.Stream{
-			Aggregation: metric.AggregationExplicitBucketHistogram{
-				NoMinMax:   true,
-				Boundaries: []float64{1000, 4000, 7000, 10000, 20000},
-			},
-		},
-	)
-
-	return []metric.View{view}
+	return []metric.View{}
 }
 
 func createReader() ([]metric.Reader, error) {
