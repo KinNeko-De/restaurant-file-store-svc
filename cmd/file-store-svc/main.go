@@ -6,7 +6,6 @@ import (
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/health"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/metric"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server"
 )
 
@@ -16,11 +15,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	provider, err := metric.InitializeMetrics(ctx)
-	if err != nil {
-		logger.Logger.Error().Err(err).Msg("failed to initialize metrics")
-		os.Exit(40)
-	}
+	provider := server.InitializeMetrics(ctx)
 
 	grpcServerStopped := make(chan struct{})
 	grpcServerStarted := make(chan struct{})

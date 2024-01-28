@@ -29,32 +29,30 @@ func connectToDatabase(ctx context.Context, databaseStopped chan struct{}, datab
 
 	gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
+	err := initializePersistence(gracefulAbort, ctx)
+	if err != nil {
+		return err
+	}
+
+	close(databaseConnected)
+	return nil
+}
+
+func initializePersistence(gracefulAbort context.Context, ctx context.Context) error {
 	client, err := createClient(gracefulAbort)
 	if err != nil {
 		return err
 	}
 
-	/*
-		gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
-		defer cancel()
-
-		client, err := createClient(gracefulAbort)
-		if err != nil {
-			return err
-		}
-
-		if err := initializeFileMetadataRepository(ctx, client); err != nil {
-			return err
-		}
-
-	*/
-	close(databaseConnected)
+	if err := initializeFileMetadataRepository(ctx, client); err != nil {
+		return err
+	}
 	return nil
 }
 
 func listenToGracefulShutdown(ctx context.Context, client *mongo.Client, databaseStopped chan struct{}) {
-	gracefulStop := shutdown.CreateGracefulStop()
-	<-gracefulStop
+	gracefulShutdown := shutdown.CreateGracefulStop()
+	<-gracefulShutdown
 	if client != nil {
 		client.Disconnect(ctx)
 	}

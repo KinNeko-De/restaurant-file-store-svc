@@ -9,13 +9,14 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
-func MockMetric() (*metric.ManualReader, *metric.MeterProvider) {
+func MockMetric(config OtelConfig) (*metric.ManualReader, *metric.MeterProvider) {
+
 	reader := metric.NewManualReader()
 
-	ressource, _ := createRessource()
+	ressource, _ := createRessource(config)
 	views := createViews()
 	provider := createProvider(ressource, []metric.Reader{reader}, views)
-	createMetrics(provider)
+	createMetrics(provider, config)
 	return reader, provider
 }
 
