@@ -26,7 +26,7 @@
         "env": {
           "OTEL_SERVICE_NAME": "restaurant.file-store-local",
           "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "iamnotthere:4317",
-          "MONGODB_URI": "mongodb://rootuser:rootpassword@mongodb:27017",
+          "MONGODB_URI": "mongodb://rootuser:rootpassword@localhost:27017",
           "MONGODB_DATABASE": "restaurant-file-store-db",
         }
     },
