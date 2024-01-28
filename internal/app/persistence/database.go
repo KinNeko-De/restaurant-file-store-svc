@@ -6,7 +6,7 @@ import (
 	"syscall"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/mylogger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server/shutdown"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -21,7 +21,7 @@ type MongoDBConfig struct {
 func ConnectToDatabase(ctx context.Context, databaseStopped chan struct{}, databaseConnected chan struct{}, config MongoDBConfig) error {
 	var client *mongo.Client
 	go listenToGracefulShutdown(ctx, client, databaseStopped)
-	logger.Logger.Debug().Msg("connecting to database")
+	mylogger.Logger.Debug().Msg("connecting to database")
 
 	err := initializePersistence(ctx, config)
 	if err != nil {

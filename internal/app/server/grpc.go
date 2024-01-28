@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/health"
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/mylogger"
 )
 
 func StartGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan struct{}) {
@@ -29,7 +29,7 @@ func StartGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan str
 func startGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan struct{}, port string) {
 	listener, err := net.Listen("tcp", port)
 	if err != nil {
-		logger.Logger.Error().Err(err).Msgf("Failed to listen on port %v", port)
+		mylogger.Logger.Error().Err(err).Msgf("Failed to listen on port %v", port)
 		os.Exit(50)
 	}
 
@@ -40,11 +40,11 @@ func startGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan str
 
 	var gracefulStop = make(chan os.Signal, 1)
 	signal.Notify(gracefulStop, syscall.SIGTERM, syscall.SIGINT)
-	logger.Logger.Debug().Msg("starting grpc server")
+	mylogger.Logger.Debug().Msg("starting grpc server")
 
 	go func() {
 		if err := grpcServer.Serve(listener); err != nil {
-			logger.Logger.Error().Err(err).Msg("failed to serve grpc server")
+			mylogger.Logger.Error().Err(err).Msg("failed to serve grpc server")
 			os.Exit(51)
 		}
 	}()
@@ -53,7 +53,7 @@ func startGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan str
 	stop := <-gracefulStop
 	healthServer.Shutdown()
 	grpcServer.GracefulStop()
-	logger.Logger.Debug().Msgf("http server stopped. received signal %s", stop)
+	mylogger.Logger.Debug().Msgf("http server stopped. received signal %s", stop)
 	close(grpcServerStopped)
 }
 

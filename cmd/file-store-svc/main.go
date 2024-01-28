@@ -5,13 +5,13 @@ import (
 	"os"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/health"
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/mylogger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server"
 )
 
 func main() {
-	logger.SetLogLevel(logger.LogLevel)
-	logger.Logger.Info().Msg("Starting application.")
+	mylogger.SetLogLevel(mylogger.LogLevel)
+	mylogger.Logger.Info().Msg("Starting application.")
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -27,7 +27,7 @@ func main() {
 	go func() {
 		<-databaseConnected
 		<-grpcServerStarted
-		logger.Logger.Info().Msg("Application started.")
+		mylogger.Logger.Info().Msg("Application started.")
 		health.Ready()
 	}()
 
@@ -35,6 +35,6 @@ func main() {
 	<-databaseDisconnected
 	provider.Shutdown(ctx)
 	cancel()
-	logger.Logger.Info().Msg("Application stopped.")
+	mylogger.Logger.Info().Msg("Application stopped.")
 	os.Exit(0)
 }

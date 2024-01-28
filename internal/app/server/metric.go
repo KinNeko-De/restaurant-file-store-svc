@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	internalMetric "github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/metric"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/mylogger"
 
 	"go.opentelemetry.io/otel/sdk/metric"
 )
@@ -17,7 +17,7 @@ const OtelMetricEndpointEnv = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
 func InitializeMetrics(ctx context.Context) *metric.MeterProvider {
 	provider, err := initializeMetrics(ctx)
 	if err != nil {
-		logger.Logger.Error().Err(err).Msg("failed to initialize metrics")
+		mylogger.Logger.Error().Err(err).Msg("failed to initialize metrics")
 		os.Exit(40)
 	}
 	return provider

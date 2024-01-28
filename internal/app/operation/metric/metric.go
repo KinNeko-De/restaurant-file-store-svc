@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/mylogger"
 	"go.opentelemetry.io/otel"
 
 	"github.com/kinneko-de/restaurant-document-generate-svc/build"
@@ -30,7 +30,7 @@ var (
 )
 
 func InitializeMetrics(ctx context.Context, config OtelConfig) (*metric.MeterProvider, error) {
-	metricLogger := zerologr.New(&logger.Logger)
+	metricLogger := zerologr.New(&mylogger.Logger)
 	otel.SetLogger(metricLogger)
 
 	provider, err := initializeOpenTelemetry(ctx, config)

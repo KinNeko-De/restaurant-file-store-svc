@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/mylogger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/persistence"
 )
 
@@ -15,7 +15,7 @@ const MongoDbDatabaseNameEnv = "MONGODB_DATABASE"
 func InitializeDatabase(ctx context.Context, databaseStoped chan struct{}, databaseConnected chan struct{}) {
 	err := connectToDatabase(ctx, databaseStoped, databaseConnected)
 	if err != nil {
-		logger.Logger.Error().Err(err).Msg("failed to connect to database")
+		mylogger.Logger.Error().Err(err).Msg("failed to connect to database")
 		os.Exit(51)
 	}
 }
