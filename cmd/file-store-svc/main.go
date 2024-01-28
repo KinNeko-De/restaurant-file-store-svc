@@ -21,7 +21,7 @@ func main() {
 	grpcServerStarted := make(chan struct{})
 	databaseDisconnected := make(chan struct{})
 	databaseConnected := make(chan struct{})
-	go server.StartGrpcServer(grpcServerStopped, grpcServerStarted, ":3110")
+	go server.StartGrpcServer(grpcServerStopped, grpcServerStarted)
 	go server.ConnectToDatabase(ctx, databaseDisconnected, databaseConnected)
 
 	go func() {

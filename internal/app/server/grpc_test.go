@@ -12,7 +12,7 @@ import (
 
 func TestStartGrpcServer_ProcessAlreadyListenToPort_AppCrash(t *testing.T) {
 	if os.Getenv("EXECUTE") == "1" {
-		StartGrpcServer(make(chan struct{}), make(chan struct{}), ":9999")
+		startGrpcServer(make(chan struct{}), make(chan struct{}), ":9999")
 		return
 	}
 
@@ -35,7 +35,7 @@ func TestStartGrpcServer_ProcessAlreadyListenToPort_AppCrash(t *testing.T) {
 
 func TestStartGrpcServer_PortMalformed(t *testing.T) {
 	if os.Getenv("EXECUTE") == "1" {
-		StartGrpcServer(make(chan struct{}), make(chan struct{}), "malformedPort")
+		startGrpcServer(make(chan struct{}), make(chan struct{}), "malformedPort")
 		return
 	}
 
