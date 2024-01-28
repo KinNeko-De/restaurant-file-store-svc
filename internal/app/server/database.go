@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
@@ -24,6 +26,14 @@ func connectToDatabase(ctx context.Context, databaseStopped chan struct{}, datab
 	var client *mongo.Client
 	go listenToGracefulShutdown(ctx, client, databaseStopped)
 	logger.Logger.Debug().Msg("connecting to database")
+
+	gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
+	client, err := createClient(gracefulAbort)
+	if err != nil {
+		return err
+	}
+
 	/*
 		gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
@@ -58,10 +68,12 @@ func createClient(ctx context.Context) (*mongo.Client, error) {
 		return nil, err
 	}
 
-	err = client.Ping(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
+	/*
+		err = client.Ping(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+	*/
 
 	return client, nil
 }
