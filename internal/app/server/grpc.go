@@ -21,7 +21,7 @@ import (
 )
 
 func StartGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan struct{}) {
-	port := ":3110" // todo load from env
+	port := ":3110" // todo load from env, move os.exit up to here and refactor tests
 
 	startGrpcServer(grpcServerStopped, grpcServerStarted, port)
 }
