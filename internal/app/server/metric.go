@@ -24,23 +24,13 @@ func InitializeMetrics(ctx context.Context) *metric.MeterProvider {
 }
 
 func initializeMetrics(ctx context.Context) (*metric.MeterProvider, error) {
-	config, err := LoadConfig()
+	config, err := loadConfig()
 	if err != nil {
 		return nil, err
 	}
 
 	provider, err := internalMetric.InitializeMetrics(ctx, config)
 	return provider, err
-}
-
-func LoadConfig() (internalMetric.OtelConfig, error) {
-	otelConfig, err := loadConfig()
-	if err != nil {
-		return otelConfig, err
-	}
-	config := otelConfig
-
-	return config, nil
 }
 
 func loadConfig() (internalMetric.OtelConfig, error) {
