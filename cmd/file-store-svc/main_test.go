@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/testing/envvar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,8 +43,7 @@ func TestMain_ApplicationListenToSIGTERM_AndGracefullyShutdown(t *testing.T) {
 		return
 	}
 
-	t.Setenv(server.OtelMetricEndpointEnv, "http://localhost")
-	t.Setenv(server.ServiceNameEnv, "blub")
+	envvar.SetAllNeceassaryEnvironemntVariables(t)
 	cmd := exec.Command(os.Args[0], "-test.run=TestMain_ApplicationListenToSIGTERM_AndGracefullyShutdown")
 	cmd.Env = append(os.Environ(), "EXECUTE=1")
 	err := cmd.Start()
