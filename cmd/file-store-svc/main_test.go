@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/testing/envvar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -65,8 +66,7 @@ func TestMain_HealthCheckIsServing_Liveness(t *testing.T) {
 		return
 	}
 
-	t.Setenv(server.OtelMetricEndpointEnv, "http://localhost")
-	t.Setenv(server.ServiceNameEnv, "blub")
+	envvar.SetAllNeceassaryEnvironemntVariables(t)
 	runningApp := exec.Command(os.Args[0], "-test.run=TestMain_HealthCheckIsServing_Liveness")
 	runningApp.Env = append(os.Environ(), "EXECUTE=1")
 	blockingErr := runningApp.Start()
@@ -89,8 +89,7 @@ func TestMain_HealthCheckIsServing_Readiness(t *testing.T) {
 		return
 	}
 
-	t.Setenv(server.OtelMetricEndpointEnv, "http://localhost")
-	t.Setenv(server.ServiceNameEnv, "blub")
+	envvar.SetAllNeceassaryEnvironemntVariables(t)
 	runningApp := exec.Command(os.Args[0], "-test.run=TestMain_HealthCheckIsServing_Readiness")
 	runningApp.Env = append(os.Environ(), "EXECUTE=1")
 	blockingErr := runningApp.Start()
