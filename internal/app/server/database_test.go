@@ -50,17 +50,17 @@ func TestConnectToDatabase_ConfigIsComplete(t *testing.T) {
 	// TODO assert that the database is connected
 }
 
-func TestConnectToDatabase_AnyError_AppCrash(t *testing.T) {
+func TestInitializeDatabase_AnyError_AppCrash(t *testing.T) {
 	if os.Getenv("EXECUTE") == "1" {
 		// will crash because of missing environment variables
-		connectToDatabase(context.Background(), make(chan struct{}), make(chan struct{}))
+		InitializeDatabase(context.Background(), make(chan struct{}), make(chan struct{}))
 		return
 	}
 
-	runningApp := exec.Command(os.Args[0], "-test.run=TestConnectToDatabase_AnyError_AppCrash")
+	runningApp := exec.Command(os.Args[0], "-test.run=TestInitializeDatabase_AnyError_AppCrash")
 	runningApp.Env = append(os.Environ(), "EXECUTE=1")
 	err := runningApp.Run()
 	require.NotNil(t, err)
 	exitCode := err.(*exec.ExitError).ExitCode()
-	assert.Equal(t, 50, exitCode)
+	assert.Equal(t, 51, exitCode)
 }
