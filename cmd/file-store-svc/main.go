@@ -6,7 +6,6 @@ import (
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/health"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/metric"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server"
 )
 
@@ -14,20 +13,28 @@ func main() {
 	logger.SetLogLevel(logger.LogLevel)
 	logger.Logger.Info().Msg("Starting application.")
 
-	provider, err := metric.InitializeMetrics()
-	if err != nil {
-		logger.Logger.Error().Err(err).Msg("failed to initialize metrics")
-		os.Exit(40)
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	provider := server.InitializeMetrics(ctx)
+
 	grpcServerStopped := make(chan struct{})
 	grpcServerStarted := make(chan struct{})
-	go server.StartGrpcServer(grpcServerStopped, grpcServerStarted, ":3110")
+	databaseDisconnected := make(chan struct{})
+	databaseConnected := make(chan struct{})
+	go server.StartGrpcServer(grpcServerStopped, grpcServerStarted)
+	go server.InitializeDatabase(ctx, databaseDisconnected, databaseConnected)
 
-	<-grpcServerStarted
-	health.Ready()
+	go func() {
+		<-databaseConnected
+		<-grpcServerStarted
+		logger.Logger.Info().Msg("Application started.")
+		health.Ready()
+	}()
 
 	<-grpcServerStopped
-	provider.Shutdown(context.Background())
+	<-databaseDisconnected
+	provider.Shutdown(ctx)
+	cancel()
 	logger.Logger.Info().Msg("Application stopped.")
 	os.Exit(0)
 }

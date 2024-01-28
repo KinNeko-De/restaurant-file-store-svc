@@ -2,18 +2,6 @@
   "version": "0.2.0",
   "configurations": [
       {
-          "name": "file-store-svc-docker",
-          "type": "go",
-          "request": "launch",
-          "mode": "debug",
-          "program": "${workspaceFolder}/cmd/file-store-svc/main.go",
-          "showLog": true,
-          "env": {
-            "OTEL_SERVICE_NAME": "restaurant.file-store-svc",
-            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "otel-collector:4317",
-          }
-      },
-      {
         "name": "file-store-svc-local",
         "type": "go",
         "request": "launch",
@@ -24,6 +12,8 @@
         "env": {
           "OTEL_SERVICE_NAME": "restaurant.file-store-local",
           "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "iamnotthere:4317",
+          "MONGODB_URI": "mongodb://rootuser:rootpassword@localhost:27017",
+          "MONGODB_DATABASE": "restaurant-file-store-db",
         }
     },
   ]

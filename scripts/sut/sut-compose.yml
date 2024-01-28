@@ -2,6 +2,10 @@ version: '3.9'
 name: restaurant-file-store-svc
 
 services:
+  mongodb:
+    extends:
+      file: ../../scripts/sut/database-compose.yml
+      service: mongodb
   restaurant-file-store-svc:
     image: restaurant-file-store-svc
     networks:
@@ -14,7 +18,8 @@ services:
     environment:
       "OTEL_SERVICE_NAME": "restaurant.file-store-svc"
       "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "otel-collector:4317"
-
+      "MONGODB_URI": "mongodb://rootuser:rootpassword@mongodb:27017"
+      "MONGODB_DATABASE": "restaurant-file-store-db"
     volumes:
       - ./log/:/app/log/
   otel-collector:

@@ -1,0 +1,26 @@
+version: '3.9'
+name: restaurant-file-store-svc
+
+services:
+  mongodb:
+    image: mongo:latest
+    networks:
+      - project-network
+    container_name: restaurant-file-store-db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongodb:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: rootuser
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+    volumes:
+      - /data/db
+    ports:
+      - 27017:27017
+networks:
+  project-network:
+    name: restaurant
+    external: true

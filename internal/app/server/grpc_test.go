@@ -12,7 +12,7 @@ import (
 
 func TestStartGrpcServer_ProcessAlreadyListenToPort_AppCrash(t *testing.T) {
 	if os.Getenv("EXECUTE") == "1" {
-		StartGrpcServer(make(chan struct{}), make(chan struct{}), ":3110")
+		startGrpcServer(make(chan struct{}), make(chan struct{}), ":9999")
 		return
 	}
 
@@ -33,13 +33,13 @@ func TestStartGrpcServer_ProcessAlreadyListenToPort_AppCrash(t *testing.T) {
 	assert.Equal(t, 50, exitCode)
 }
 
-func TestStartGrpcServer_PortMalformed(t *testing.T) {
+func TestStartGrpcServer_PortMalformed_AppCrash(t *testing.T) {
 	if os.Getenv("EXECUTE") == "1" {
-		StartGrpcServer(make(chan struct{}), make(chan struct{}), "malformedPort")
+		startGrpcServer(make(chan struct{}), make(chan struct{}), "malformedPort")
 		return
 	}
 
-	runningApp := exec.Command(os.Args[0], "-test.run=TestStartGrpcServer_PortMalformed")
+	runningApp := exec.Command(os.Args[0], "-test.run=TestStartGrpcServer_PortMalformed_AppCrash")
 	runningApp.Env = append(os.Environ(), "EXECUTE=1")
 	err := runningApp.Run()
 	require.NotNil(t, err)

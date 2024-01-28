@@ -3,7 +3,6 @@ package metric
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"go.opentelemetry.io/otel"
@@ -19,48 +18,43 @@ import (
 	"github.com/go-logr/zerologr"
 )
 
-const ServiceNameEnv = "OTEL_SERVICE_NAME"
-const OtelMetricEndpointEnv = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
+type OtelConfig struct {
+	OtelMetricEndpoint string // is used by the otel sdk to identify the endpoint to send metrics to. According to document it Will be set implicitly by the otel sdk. But it does not work. I set it explicitly.
+	OtelServiceName    string // is used by the otel sdk to identify the service name. I found no way to set it explicitly by the otel sdk. According to the specification setting an attribute with name "service.name" should work, but it does not.
+}
 
 var (
-	config   otelConfig
 	version  = "0.2.0"
-	ctx      = context.Background()
 	provider *metric.MeterProvider
 	meter    api.Meter
 )
 
-func InitializeMetrics() (*metric.MeterProvider, error) {
+func InitializeMetrics(ctx context.Context, config OtelConfig) (*metric.MeterProvider, error) {
 	metricLogger := zerologr.New(&logger.Logger)
 	otel.SetLogger(metricLogger)
 
-	err := readConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	provider, err := initializeOpenTelemetry()
+	provider, err := initializeOpenTelemetry(ctx, config)
 	return provider, err
 }
 
-func initializeOpenTelemetry() (*metric.MeterProvider, error) {
-	ressource, err := createRessource()
+func initializeOpenTelemetry(ctx context.Context, config OtelConfig) (*metric.MeterProvider, error) {
+	ressource, err := createRessource(config)
 	if err != nil {
 		return nil, err
 	}
 
-	readers, err := createReader()
+	readers, err := createReader(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
 	views := createViews()
 	provider := createProvider(ressource, readers, views)
-	metricError := createMetrics(provider)
+	metricError := createMetrics(provider, config)
 	return provider, metricError
 }
 
-func createRessource() (*resource.Resource, error) {
+func createRessource(config OtelConfig) (*resource.Resource, error) {
 	res, err := resource.Merge(resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL,
 			semconv.ServiceNameKey.String(config.OtelServiceName),
@@ -77,7 +71,7 @@ func createViews() []metric.View {
 	return []metric.View{}
 }
 
-func createReader() ([]metric.Reader, error) {
+func createReader(ctx context.Context, config OtelConfig) ([]metric.Reader, error) {
 	otelGrpcExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithInsecure(), otlpmetricgrpc.WithEndpoint(config.OtelMetricEndpoint))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize metric reader to otel collector: %w", err)
@@ -110,7 +104,7 @@ func createProvider(ressource *resource.Resource, readers []metric.Reader, views
 }
 
 // https://opentelemetry.io/docs/specs/otel/metrics/semantic_conventions/
-func createMetrics(provider *metric.MeterProvider) error {
+func createMetrics(provider *metric.MeterProvider, config OtelConfig) error {
 	// I decided to use the service name here as scope because this service is a microservice. one sccope per service approach.
 	meter = provider.Meter(config.OtelServiceName, api.WithInstrumentationVersion(version))
 
@@ -121,38 +115,6 @@ func createMetrics(provider *metric.MeterProvider) error {
 	return nil
 }
 
-func ForceFlush() {
+func ForceFlush(ctx context.Context) {
 	provider.ForceFlush(ctx)
-}
-
-func readConfig() error {
-	otelConfig, err := loadConfig()
-	if err != nil {
-		return err
-	}
-	config = otelConfig
-
-	return nil
-}
-
-type otelConfig struct {
-	OtelMetricEndpoint string // is used by the otel sdk to identify the endpoint to send metrics to. According to document it Will be set implicitly by the otel sdk. But it does not work. I set it explicitly.
-	OtelServiceName    string // is used by the otel sdk to identify the service name. I found no way to set it explicitly by the otel sdk. According to the specification setting an attribute with name "service.name" should work, but it does not.
-}
-
-func loadConfig() (otelConfig, error) {
-	endpoint, found := os.LookupEnv(OtelMetricEndpointEnv)
-	if !found {
-		return otelConfig{}, fmt.Errorf("otel metric endpoint is not configured. Expected environment variable %v", OtelMetricEndpointEnv)
-	}
-
-	serviceName, found := os.LookupEnv(ServiceNameEnv)
-	if !found {
-		return otelConfig{}, fmt.Errorf("otel service name is not configured. Expected environment variable %v", ServiceNameEnv)
-	}
-
-	return otelConfig{
-		OtelMetricEndpoint: endpoint,
-		OtelServiceName:    serviceName,
-	}, nil
 }

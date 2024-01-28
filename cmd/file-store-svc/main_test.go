@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/metric"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/testing/envvar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -43,8 +43,7 @@ func TestMain_ApplicationListenToSIGTERM_AndGracefullyShutdown(t *testing.T) {
 		return
 	}
 
-	t.Setenv(metric.OtelMetricEndpointEnv, "http://localhost")
-	t.Setenv(metric.ServiceNameEnv, "blub")
+	envvar.SetAllNeceassaryEnvironemntVariables(t)
 	cmd := exec.Command(os.Args[0], "-test.run=TestMain_ApplicationListenToSIGTERM_AndGracefullyShutdown")
 	cmd.Env = append(os.Environ(), "EXECUTE=1")
 	err := cmd.Start()
@@ -65,8 +64,7 @@ func TestMain_HealthCheckIsServing_Liveness(t *testing.T) {
 		return
 	}
 
-	t.Setenv(metric.OtelMetricEndpointEnv, "http://localhost")
-	t.Setenv(metric.ServiceNameEnv, "blub")
+	envvar.SetAllNeceassaryEnvironemntVariables(t)
 	runningApp := exec.Command(os.Args[0], "-test.run=TestMain_HealthCheckIsServing_Liveness")
 	runningApp.Env = append(os.Environ(), "EXECUTE=1")
 	blockingErr := runningApp.Start()
@@ -74,7 +72,7 @@ func TestMain_HealthCheckIsServing_Liveness(t *testing.T) {
 	defer runningApp.Process.Kill()
 
 	expectedStatus := healthV1.HealthCheckResponse_SERVING
-	healthResponse, err := waitForStatus(t, serviceToCheck, expectedStatus)
+	healthResponse, err := waitForStatus(t, serviceToCheck, expectedStatus, 100*time.Millisecond, 100)
 
 	require.Nil(t, err)
 	require.NotNil(t, healthResponse)
@@ -89,8 +87,7 @@ func TestMain_HealthCheckIsServing_Readiness(t *testing.T) {
 		return
 	}
 
-	t.Setenv(metric.OtelMetricEndpointEnv, "http://localhost")
-	t.Setenv(metric.ServiceNameEnv, "blub")
+	envvar.SetAllNeceassaryEnvironemntVariables(t)
 	runningApp := exec.Command(os.Args[0], "-test.run=TestMain_HealthCheckIsServing_Readiness")
 	runningApp.Env = append(os.Environ(), "EXECUTE=1")
 	blockingErr := runningApp.Start()
@@ -98,22 +95,20 @@ func TestMain_HealthCheckIsServing_Readiness(t *testing.T) {
 	defer runningApp.Process.Kill()
 
 	expectedStatus := healthV1.HealthCheckResponse_SERVING
-	healthResponse, err := waitForStatus(t, serviceToCheck, expectedStatus)
+	healthResponse, err := waitForStatus(t, serviceToCheck, expectedStatus, 100*time.Millisecond, 500)
 
 	require.Nil(t, err)
 	require.NotNil(t, healthResponse)
 	assert.Equal(t, expectedStatus, healthResponse.Status)
 }
 
-func waitForStatus(t *testing.T, serviceToCheck string, expectedStatus healthV1.HealthCheckResponse_ServingStatus) (*healthV1.HealthCheckResponse, error) {
+func waitForStatus(t *testing.T, serviceToCheck string, expectedStatus healthV1.HealthCheckResponse_ServingStatus, interval time.Duration, iterations int) (*healthV1.HealthCheckResponse, error) {
 	conn, dialErr := grpc.Dial("localhost:3110", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.Nil(t, dialErr)
 	defer conn.Close()
 
 	client := healthV1.NewHealthClient(conn)
 	count := 0
-	const iterations = 200
-	const interval = time.Millisecond * 50
 	var healthResponse *healthV1.HealthCheckResponse
 	var err error
 	for count < iterations {
