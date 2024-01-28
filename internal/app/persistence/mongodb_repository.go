@@ -18,9 +18,9 @@ func CreateMongoDBClient(ctx context.Context, uri string) (*mongo.Client, error)
 	return client, err
 }
 
-func NewMongoDBRepository(ctx context.Context, client *mongo.Client, databaseName string, collection string) (*MongoDBRepository, error) {
+func NewMongoDBRepository(ctx context.Context, client *mongo.Client, databaseName string, collectionName string) (*MongoDBRepository, error) {
 	db := client.Database(databaseName)
-	col := db.Collection(collection)
+	col := db.Collection(collectionName)
 
 	return &MongoDBRepository{
 		client:     client,

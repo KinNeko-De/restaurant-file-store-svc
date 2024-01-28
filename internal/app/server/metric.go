@@ -24,7 +24,7 @@ func InitializeMetrics(ctx context.Context) *metric.MeterProvider {
 }
 
 func initializeMetrics(ctx context.Context) (*metric.MeterProvider, error) {
-	config, err := loadConfig()
+	config, err := loadMetricConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func initializeMetrics(ctx context.Context) (*metric.MeterProvider, error) {
 	return provider, err
 }
 
-func loadConfig() (internalMetric.OtelConfig, error) {
+func loadMetricConfig() (internalMetric.OtelConfig, error) {
 	endpoint, found := os.LookupEnv(OtelMetricEndpointEnv)
 	if !found {
 		return internalMetric.OtelConfig{}, fmt.Errorf("otel metric endpoint is not configured. Expected environment variable %v", OtelMetricEndpointEnv)
