@@ -49,8 +49,8 @@ func TestStoreFile_TextFile(t *testing.T) {
 	expected := CreateExpectedResponse(4, "text/plain; charset=utf-8", ".txt")
 	mockStream := CreateMockStream(t, "test.txt", [][]byte{sentFile}, expected)
 	fileWriter := &MockWriteCloser{}
-	fileWriter.On("Write", mock.IsType(make([]byte, 0))).Return(nil)
-	fileWriter.On("Close").Return(nil)
+	fileWriter.EXPECT().Write(sentFile).Return(4, nil).Times(1)
+	fileWriter.EXPECT().Close().Return(nil).Times(1)
 	mockFileRepository := &MockFileRepository{}
 	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), 0).Return(fileWriter, nil).Times(1)
 	mockFileMetadataRepository := &MockFileMetadataRepository{}
@@ -129,18 +129,4 @@ func CreateExpectedResponse(expectedSize uint64, expectedMediaType string, expec
 			response.GetStoredFileMetadata().GetMediaType() == expectedMediaType &&
 			response.GetStoredFileMetadata().GetExtension() == expectedFileExtension
 	})
-}
-
-type MockWriteCloser struct {
-	mock.Mock
-}
-
-func (m *MockWriteCloser) Write(p []byte) (n int, err error) {
-	args := m.Called(p)
-	return len(p), args.Error(0)
-}
-
-func (m *MockWriteCloser) Close() error {
-	args := m.Called()
-	return args.Error(0)
 }
