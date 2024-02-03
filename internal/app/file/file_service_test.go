@@ -45,6 +45,7 @@ func TestFile(t *testing.T) {
 
 func TestStoreFile_TextFile(t *testing.T) {
 	sentFile := fixture.TextFile()
+	var generatedFileId uuid.UUID
 
 	expected := CreateExpectedResponse(4, "text/plain; charset=utf-8", ".txt")
 	mockStream := CreateMockStream(t, "test.txt", [][]byte{sentFile}, expected)
@@ -52,7 +53,9 @@ func TestStoreFile_TextFile(t *testing.T) {
 	fileWriter.EXPECT().Write(sentFile).Return(4, nil).Times(1)
 	fileWriter.EXPECT().Close().Return(nil).Times(1)
 	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), 0).Return(fileWriter, nil).Times(1)
+	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), 0).
+		Run(func(ctx context.Context, fileId uuid.UUID, chunkSize int) { generatedFileId = fileId }).
+		Return(fileWriter, nil).Times(1)
 	mockFileMetadataRepository := &MockFileMetadataRepository{}
 
 	server := FileServiceServer{}
@@ -62,7 +65,9 @@ func TestStoreFile_TextFile(t *testing.T) {
 	actualError := server.StoreFile(mockStream)
 
 	assert.Nil(t, actualError)
-	// assert.Equal(t, sentFile, storedFile)
+	assert.NotEqual(t, uuid.Nil, generatedFileId)
+	assert.Equal(t, uuid.Version(0x4), generatedFileId.Version())
+	assert.Equal(t, uuid.RFC4122, generatedFileId.Variant())
 }
 
 func TestStoreFile_PdfFile(t *testing.T) {
