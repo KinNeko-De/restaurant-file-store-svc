@@ -1,7 +1,6 @@
 package file
 
 import (
-	"context"
 	"io"
 	"testing"
 
@@ -51,17 +50,13 @@ func TestStoreFile_FileDataIsSentInOneChunk(t *testing.T) {
 	expectedFileExtension := ".txt"
 	expectedRevision := int64(1)
 
-	var generatedFileId uuid.UUID
+	var generatedFileId *uuid.UUID
 	var actualResponse *v1.StoreFileResponse
 	mockStream := createValidFileStream(t, sentFileName, [][]byte{sentFile})
-	setupResponse(t, mockStream, &actualResponse, nil)
-	fileWriter := &MockWriteCloser{}
-	fileWriter.EXPECT().Write(sentFile).Return(4, nil).Times(1)
-	fileWriter.EXPECT().Close().Return(nil).Times(1)
-	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), 0).
-		Run(func(ctx context.Context, fileId uuid.UUID, chunkSize int) { generatedFileId = fileId }).
-		Return(fileWriter, nil).Times(1)
+	setupSuccessfulResponse(t, mockStream, &actualResponse)
+	fileWriter := createWriterCloserMock(t, [][]byte{sentFile})
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
+
 	mockFileMetadataRepository := &MockFileMetadataRepository{}
 
 	server := FileServiceServer{}
@@ -116,36 +111,4 @@ func TestStoreFile_PdfFile(t *testing.T) {
 	server := FileServiceServer{}
 	actualError := server.StoreFile(mockStream)
 	assert.Nil(t, actualError)
-}
-
-func createValidFileStream(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
-	mockStream := NewFileService_StoreFileServer(t)
-
-	ctx := context.Background()
-	mockStream.EXPECT().Context().Return(ctx).Maybe()
-
-	var metadata = &v1.StoreFileRequest{
-		File: &v1.StoreFileRequest_Name{
-			Name: fileName,
-		},
-	}
-	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
-	for _, chunk := range fileChunks {
-		var chunkRequest = &v1.StoreFileRequest{
-			File: &v1.StoreFileRequest_Chunk{
-				Chunk: chunk,
-			},
-		}
-		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
-	}
-
-	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
-
-	return mockStream
-}
-
-func setupResponse(t *testing.T, mockStream *FileService_StoreFileServer, actualResponse **v1.StoreFileResponse, err error) {
-	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
-		*actualResponse = response
-	}).Return(err).Times(1)
 }
