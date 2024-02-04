@@ -24,42 +24,68 @@ type FileServiceServer struct {
 	apiRestaurantFile.UnimplementedFileServiceServer
 }
 
-// - receive filename
-// - read extension
-// - create file in storage
-// - receive chunk
-// - write chunk to file
-// - write chunk to snifarray if snifarray < 512 byte
-// - increase size
-// - receive chunk gain until end
-// - create file id
-// - write new document to database
-// - write response
+const sniffSize = 512 // defined by the net/http package
+
 func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_StoreFileServer) error {
 	metaData, err := receiveMetadata(stream)
 	if err != nil {
 		return err
 	}
 
-	const sniffSize = 512
-	var totalFileSize uint64 = 0
-	var sniffByteCount uint64 = 0
-	sniff := make([]byte, sniffSize)
-	ctx := stream.Context()
-
-	fileId := uuid.New()
-	f, err := FileRepositoryInstance.CreateFile(ctx, fileId, 0)
+	totalFileSize, sniff, fileId, err := writeFile(stream)
 	if err != nil {
 		return err
 	}
 
+	contentType := http.DetectContentType(sniff)
+	extension := filepath.Ext(metaData.Name)
+	createdAt := time.Now().UTC()
+
+	// TODO Store file metadata
+
+	response, err := createStoreFileResponse(fileId, totalFileSize, contentType, extension, createdAt)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to to create response")
+		return status.Error(codes.Internal, "failed to create response. please retry the request")
+	}
+
+	err = stream.SendAndClose(response)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to send response")
+		return status.Error(codes.Internal, "failed to send response. please retry the request")
+	}
+
+	return nil
+}
+
+func writeFile(stream apiRestaurantFile.FileService_StoreFileServer) (uint64, []byte, uuid.UUID, error) {
+	fileId := uuid.New()
+	f, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, 0)
+	if err != nil {
+		logger.Logger.Err(err).Msg("ferror while creating file")
+		return 0, nil, uuid.Nil, status.Error(codes.Internal, "failed to write file. please retry the request")
+	}
+	defer f.Close()
+
+	totalFileSize, sniff, err := receiveChunks(stream, f)
+	if err != nil {
+		return 0, nil, uuid.Nil, err
+	}
+
+	return totalFileSize, sniff, fileId, nil
+}
+
+func receiveChunks(stream apiRestaurantFile.FileService_StoreFileServer, f io.WriteCloser) (uint64, []byte, error) {
+	var totalFileSize uint64 = 0
+	var sniffByteCount uint64 = 0
+	sniff := make([]byte, sniffSize)
 	for {
 		finished, chunkMessage, err := receiveChunk(stream)
+		if err != nil {
+			return 0, nil, err
+		}
 		if finished {
 			break
-		}
-		if err != nil {
-			return err
 		}
 		totalFileSize += uint64(len(chunkMessage.Chunk))
 
@@ -71,33 +97,19 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 
 		_, err = f.Write(chunkMessage.Chunk)
 		if err != nil {
-			return status.Error(codes.Internal, "failed to write chunk to file")
+			logger.Logger.Err(err).Msg("failed to write chunk to file")
+			return 0, nil, status.Error(codes.Internal, "failed to write chunk to file. please retry the request")
 		}
 	}
 
-	f.Close()
-
-	contentType := http.DetectContentType(sniff[:sniffByteCount])
-	extension := filepath.Ext(metaData.Name)
-
-	response, err := createStoreFileResponse(fileId, totalFileSize, contentType, extension)
-	if err != nil {
-		logger.Logger.Err(err).Msg("failed to to create response")
-		return status.Error(codes.Internal, "failed to create response. please retry the request")
-	}
-	err = stream.SendAndClose(response)
-	if err != nil {
-		logger.Logger.Err(err).Msg("failed to send response")
-		return status.Error(codes.Internal, "failed to send response. please retry the request")
-	}
-
-	return nil
+	return totalFileSize, sniff[:sniffByteCount], nil
 }
 
 func receiveMetadata(stream apiRestaurantFile.FileService_StoreFileServer) (*apiRestaurantFile.StoreFileRequest_Name, error) {
 	firstRequest, err := stream.Recv()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "receiving message failed")
+		logger.Logger.Err(err).Msg("receiving message failed")
+		return nil, status.Errorf(codes.Internal, "receiving message failed. please retry the request")
 	}
 	msg, ok := firstRequest.File.(*apiRestaurantFile.StoreFileRequest_Name)
 	if !ok {
@@ -112,7 +124,8 @@ func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, *
 		return true, nil, nil
 	}
 	if err != nil {
-		return false, nil, err
+		logger.Logger.Err(err).Msg("failed to receive chunk")
+		return false, nil, status.Errorf(codes.Internal, "failed to receive chunk. please retry the request")
 	}
 	msg, ok := request.File.(*apiRestaurantFile.StoreFileRequest_Chunk)
 	if !ok {
@@ -121,7 +134,7 @@ func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, *
 	return false, msg, nil
 }
 
-func createStoreFileResponse(fileId uuid.UUID, totalFileSize uint64, contentType string, extension string) (*apiRestaurantFile.StoreFileResponse, error) {
+func createStoreFileResponse(fileId uuid.UUID, totalFileSize uint64, contentType string, extension string, createdAt time.Time) (*apiRestaurantFile.StoreFileResponse, error) {
 	fileUuid, err := apiProtobuf.ToProtobuf(fileId)
 	if err != nil {
 		return nil, err
@@ -132,7 +145,7 @@ func createStoreFileResponse(fileId uuid.UUID, totalFileSize uint64, contentType
 			Revision: 1,
 		},
 		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
-			CreatedAt: timestamppb.New(time.Now()),
+			CreatedAt: timestamppb.New(createdAt),
 			Size:      totalFileSize,
 			MediaType: contentType,
 			Extension: extension,
