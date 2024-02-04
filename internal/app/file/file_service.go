@@ -40,14 +40,14 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	if err != nil {
 		return err
 	}
-	name := metaData.Name
-	extension := filepath.Ext(name)
+
+	const sniffSize = 512
+	var totalFileSize uint64 = 0
+	var sniffByteCount uint64 = 0
+	sniff := make([]byte, sniffSize)
+	ctx := stream.Context()
 
 	fileId := uuid.New()
-	var totalFileSize uint64 = 0
-	sniff := make([]byte, 512)
-
-	ctx := stream.Context()
 	f, err := FileRepositoryInstance.CreateFile(ctx, fileId, 0)
 	if err != nil {
 		return err
@@ -61,17 +61,13 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 		if err != nil {
 			return err
 		}
-
-		if totalFileSize < 512 {
-			missingBytes := 512 - totalFileSize
-			remaingBytesInChunk := uint64(len(chunkMessage.Chunk))
-			if remaingBytesInChunk < missingBytes {
-				missingBytes = remaingBytesInChunk
-			}
-			copy(sniff[totalFileSize:], chunkMessage.Chunk[:missingBytes])
-		}
-
 		totalFileSize += uint64(len(chunkMessage.Chunk))
+
+		if sniffByteCount < sniffSize {
+			missingBytes := min(sniffSize-sniffByteCount, uint64(len(chunkMessage.Chunk)))
+			copy(sniff[sniffByteCount:], chunkMessage.Chunk[:missingBytes])
+			sniffByteCount += missingBytes
+		}
 
 		_, err = f.Write(chunkMessage.Chunk)
 		if err != nil {
@@ -79,16 +75,29 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 		}
 	}
 
-	sniffByteCount := totalFileSize
-	if sniffByteCount > 512 {
-		sniffByteCount = 512
-	}
-	contentType := http.DetectContentType(sniff[:sniffByteCount])
 	f.Close()
 
+	contentType := http.DetectContentType(sniff[:sniffByteCount])
+	extension := filepath.Ext(metaData.Name)
+
+	response, err := createResponse(fileId, totalFileSize, contentType, extension)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to convert google uuid to protobuf uuid")
+		return status.Error(codes.Internal, "failed to convert google uuid to protobuf uuid")
+	}
+	err = stream.SendAndClose(response)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to send response")
+		return status.Error(codes.Internal, "failed to send response")
+	}
+
+	return nil
+}
+
+func createResponse(fileId uuid.UUID, totalFileSize uint64, contentType string, extension string) (*apiRestaurantFile.StoreFileResponse, error) {
 	fileUuid, err := apiProtobuf.ToProtobuf(fileId)
 	if err != nil {
-		return status.Error(codes.Internal, "failed to convert google uuid to protobuf uuid")
+		return nil, err
 	}
 	var response = &apiRestaurantFile.StoreFileResponse{
 		StoredFile: &apiRestaurantFile.StoredFile{
@@ -102,13 +111,7 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 			Extension: extension,
 		},
 	}
-	err = stream.SendAndClose(response)
-	if err != nil {
-		logger.Logger.Err(err).Msg("failed to send response")
-		return status.Error(codes.Internal, "failed to send response")
-	}
-
-	return nil
+	return response, nil
 }
 
 func receiveMetadata(stream apiRestaurantFile.FileService_StoreFileServer) (*apiRestaurantFile.StoreFileRequest_Name, error) {
