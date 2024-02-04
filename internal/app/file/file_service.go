@@ -80,38 +80,18 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	contentType := http.DetectContentType(sniff[:sniffByteCount])
 	extension := filepath.Ext(metaData.Name)
 
-	response, err := createResponse(fileId, totalFileSize, contentType, extension)
+	response, err := createStoreFileResponse(fileId, totalFileSize, contentType, extension)
 	if err != nil {
-		logger.Logger.Err(err).Msg("failed to convert google uuid to protobuf uuid")
-		return status.Error(codes.Internal, "failed to convert google uuid to protobuf uuid")
+		logger.Logger.Err(err).Msg("failed to to create response")
+		return status.Error(codes.Internal, "failed to create response. please retry the request")
 	}
 	err = stream.SendAndClose(response)
 	if err != nil {
 		logger.Logger.Err(err).Msg("failed to send response")
-		return status.Error(codes.Internal, "failed to send response")
+		return status.Error(codes.Internal, "failed to send response. please retry the request")
 	}
 
 	return nil
-}
-
-func createResponse(fileId uuid.UUID, totalFileSize uint64, contentType string, extension string) (*apiRestaurantFile.StoreFileResponse, error) {
-	fileUuid, err := apiProtobuf.ToProtobuf(fileId)
-	if err != nil {
-		return nil, err
-	}
-	var response = &apiRestaurantFile.StoreFileResponse{
-		StoredFile: &apiRestaurantFile.StoredFile{
-			Id:       fileUuid,
-			Revision: 1,
-		},
-		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
-			CreatedAt: timestamppb.New(time.Now()),
-			Size:      totalFileSize,
-			MediaType: contentType,
-			Extension: extension,
-		},
-	}
-	return response, nil
 }
 
 func receiveMetadata(stream apiRestaurantFile.FileService_StoreFileServer) (*apiRestaurantFile.StoreFileRequest_Name, error) {
@@ -139,6 +119,26 @@ func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, *
 		return false, nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreFileRequest_Chunk' expected. Actual value is "+reflect.TypeOf(request.File).String()+".")
 	}
 	return false, msg, nil
+}
+
+func createStoreFileResponse(fileId uuid.UUID, totalFileSize uint64, contentType string, extension string) (*apiRestaurantFile.StoreFileResponse, error) {
+	fileUuid, err := apiProtobuf.ToProtobuf(fileId)
+	if err != nil {
+		return nil, err
+	}
+	var response = &apiRestaurantFile.StoreFileResponse{
+		StoredFile: &apiRestaurantFile.StoredFile{
+			Id:       fileUuid,
+			Revision: 1,
+		},
+		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
+			CreatedAt: timestamppb.New(time.Now()),
+			Size:      totalFileSize,
+			MediaType: contentType,
+			Extension: extension,
+		},
+	}
+	return response, nil
 }
 
 func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFileRequest, stream apiRestaurantFile.FileService_DownloadFileServer) error {
