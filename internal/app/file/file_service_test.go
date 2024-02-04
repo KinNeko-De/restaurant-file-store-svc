@@ -1,18 +1,16 @@
 package file
 
 import (
-	"io"
 	"testing"
 
 	"github.com/google/uuid"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/internal/testing/file"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestArray(t *testing.T) {
-	//target := [6]int{}
+	// target2 := [6]int{}
 	target := make([]int, 6)
 	first := []int{1, 2, 3}
 	second := []int{4, 5}
@@ -42,7 +40,7 @@ func TestFile(t *testing.T) {
 }
 */
 
-func TestStoreFile_FileDataIsSentInOneChunk(t *testing.T) {
+func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
 	sentFile := fixture.TextFile()
 	sentFileName := "test.txt"
 	expectedSize := uint64(4)
@@ -77,34 +75,61 @@ func TestStoreFile_FileDataIsSentInOneChunk(t *testing.T) {
 	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
 
 	assert.Equal(t, generatedFileId.String(), actualResponse.StoredFile.Id.Value)
-
 }
 
-func TestStoreFile_PdfFile(t *testing.T) {
-	mockStream := NewFileService_StoreFileServer(t)
+func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *testing.T) {
+	sentFile := fixture.PdfFile()[0:512]
+	sentFileName := "test.pdf"
+	expectedSize := uint64(512)
+	expectedMediaType := "application/pdf"
 
-	var metadata = &v1.StoreFileRequest{
-		File: &v1.StoreFileRequest_Name{
-			Name: "test.pdf",
-		},
-	}
-	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
-	var chunk = &v1.StoreFileRequest{
-		File: &v1.StoreFileRequest_Chunk{
-			Chunk: fixture.PdfFile(),
-		},
-	}
-	mockStream.EXPECT().Recv().Return(chunk, nil).Times(1)
-	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
-	mockStream.EXPECT().SendAndClose(mock.MatchedBy(func(response *v1.StoreFileResponse) bool {
-		// TODO ID not null and timestamp not null
-		return response.GetStoredFile().GetRevision() == 1 &&
-			response.GetStoredFileMetadata().GetSize() == 51124 &&
-			response.GetStoredFileMetadata().GetMediaType() == "application/pdf" &&
-			response.GetStoredFileMetadata().GetExtension() == ".pdf"
-	})).Return(nil).Times(1)
+	var generatedFileId *uuid.UUID
+	var actualResponse *v1.StoreFileResponse
+	mockStream := createValidFileStream(t, sentFileName, [][]byte{sentFile})
+	setupSuccessfulResponse(t, mockStream, &actualResponse)
+	fileWriter := createWriterCloserMock(t, [][]byte{sentFile})
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t)
 
-	server := FileServiceServer{}
-	actualError := server.StoreFile(mockStream)
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreFile(mockStream)
+
 	assert.Nil(t, actualError)
+
+	assert.NotNil(t, actualResponse)
+	assert.NotNil(t, actualResponse.StoredFileMetadata)
+	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
+	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
+}
+
+func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
+	sentFile := fixture.PdfFile()
+	chunks := splitIntoChunks(sentFile, 256)
+	sentFileName := "test.pdf"
+	expectedSize := uint64(51124)
+	expectedMediaType := "application/pdf"
+	expectedFileExtension := ".pdf"
+	expectedRevision := int64(1)
+
+	var generatedFileId *uuid.UUID
+	var actualResponse *v1.StoreFileResponse
+	mockStream := createValidFileStream(t, sentFileName, chunks)
+	setupSuccessfulResponse(t, mockStream, &actualResponse)
+	fileWriter := createWriterCloserMock(t, chunks)
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreFile(mockStream)
+	assert.Nil(t, actualError)
+
+	assert.NotNil(t, actualResponse)
+	assert.NotNil(t, actualResponse.StoredFile)
+	assert.NotNil(t, actualResponse.StoredFile.Id)
+	assert.Equal(t, expectedRevision, actualResponse.StoredFile.Revision)
+	assert.NotNil(t, actualResponse.StoredFileMetadata)
+	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
+	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
+	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
+	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
 }

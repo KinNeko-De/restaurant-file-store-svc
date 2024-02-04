@@ -44,7 +44,7 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	extension := filepath.Ext(name)
 
 	fileId := uuid.New()
-	var size uint64 = 0
+	var totalFileSize uint64 = 0
 	sniff := make([]byte, 512)
 
 	ctx := stream.Context()
@@ -62,9 +62,16 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 			return err
 		}
 
-		bytes := chunkMessage.Chunk
-		copy(sniff[size:], bytes)
-		size += uint64(len(chunkMessage.Chunk))
+		if totalFileSize < 512 {
+			missingBytes := 512 - totalFileSize
+			remaingBytesInChunk := uint64(len(chunkMessage.Chunk))
+			if remaingBytesInChunk < missingBytes {
+				missingBytes = remaingBytesInChunk
+			}
+			copy(sniff[totalFileSize:], chunkMessage.Chunk[:missingBytes])
+		}
+
+		totalFileSize += uint64(len(chunkMessage.Chunk))
 
 		_, err = f.Write(chunkMessage.Chunk)
 		if err != nil {
@@ -72,7 +79,7 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 		}
 	}
 
-	sniffByteCount := size
+	sniffByteCount := totalFileSize
 	if sniffByteCount > 512 {
 		sniffByteCount = 512
 	}
@@ -90,7 +97,7 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 		},
 		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
 			CreatedAt: timestamppb.New(time.Now()),
-			Size:      size,
+			Size:      totalFileSize,
 			MediaType: contentType,
 			Extension: extension,
 		},
