@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/internal/testing/file"
 	"github.com/stretchr/testify/assert"
@@ -45,10 +46,16 @@ func TestFile(t *testing.T) {
 
 func TestStoreFile_TextFile(t *testing.T) {
 	sentFile := fixture.TextFile()
-	var generatedFileId uuid.UUID
+	sentFileName := "test.txt"
+	expectedSize := uint64(4)
+	expectedMediaType := "text/plain; charset=utf-8"
+	expectedFileExtension := ".txt"
 
-	expected := CreateExpectedResponse(4, "text/plain; charset=utf-8", ".txt")
-	mockStream := CreateMockStream(t, "test.txt", [][]byte{sentFile}, expected)
+	var generatedFileId uuid.UUID
+	var protobufUuid *protobuf.Uuid
+	mockStream := CreateFileStreamMock(t, sentFileName, [][]byte{sentFile})
+	expectedResponse := CreateExpectedResponse(uint64(expectedSize), expectedMediaType, expectedFileExtension)
+	SetupExpectedResponse(t, mockStream, expectedResponse, &protobufUuid)
 	fileWriter := &MockWriteCloser{}
 	fileWriter.EXPECT().Write(sentFile).Return(4, nil).Times(1)
 	fileWriter.EXPECT().Close().Return(nil).Times(1)
@@ -68,6 +75,9 @@ func TestStoreFile_TextFile(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, generatedFileId)
 	assert.Equal(t, uuid.Version(0x4), generatedFileId.Version())
 	assert.Equal(t, uuid.RFC4122, generatedFileId.Variant())
+	assert.NotNil(t, &protobufUuid)
+	assert.NotEqual(t, "", protobufUuid.Value)
+	assert.Equal(t, generatedFileId.String(), protobufUuid.Value)
 }
 
 func TestStoreFile_PdfFile(t *testing.T) {
@@ -99,7 +109,7 @@ func TestStoreFile_PdfFile(t *testing.T) {
 	assert.Nil(t, actualError)
 }
 
-func CreateMockStream(t *testing.T, fileName string, fileChunks [][]byte, argumentMatcher interface{}) *FileService_StoreFileServer {
+func CreateFileStreamMock(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
 	mockStream := NewFileService_StoreFileServer(t)
 
 	ctx := context.Background()
@@ -121,17 +131,23 @@ func CreateMockStream(t *testing.T, fileName string, fileChunks [][]byte, argume
 	}
 
 	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
-	mockStream.EXPECT().SendAndClose(argumentMatcher).Return(nil).Times(1)
 
 	return mockStream
 }
 
+func SetupExpectedResponse(t *testing.T, mockStream *FileService_StoreFileServer, expectedResponse interface{}, protobufUuid **protobuf.Uuid) {
+	mockStream.EXPECT().SendAndClose(expectedResponse).
+		Run(func(_a0 *v1.StoreFileResponse) {
+			*protobufUuid = _a0.StoredFile.Id
+		}).Return(nil).Times(1)
+}
+
 func CreateExpectedResponse(expectedSize uint64, expectedMediaType string, expectedFileExtension string) interface{} {
 	return mock.MatchedBy(func(response *v1.StoreFileResponse) bool {
-		// TODO ID not null and timestamp not null
 		return response.GetStoredFile().GetRevision() == 1 &&
 			response.GetStoredFileMetadata().GetSize() == expectedSize &&
 			response.GetStoredFileMetadata().GetMediaType() == expectedMediaType &&
-			response.GetStoredFileMetadata().GetExtension() == expectedFileExtension
+			response.GetStoredFileMetadata().GetExtension() == expectedFileExtension &&
+			response.StoredFileMetadata.CreatedAt != nil
 	})
 }
