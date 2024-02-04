@@ -56,14 +56,10 @@ func TestStoreFile_FileDataIsSentInOneChunk(t *testing.T) {
 	setupSuccessfulResponse(t, mockStream, &actualResponse)
 	fileWriter := createWriterCloserMock(t, [][]byte{sentFile})
 	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t)
 
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-
-	server := FileServiceServer{}
-	FileRepositoryInstance = mockFileRepository
-	FileMetadataRepositoryInstance = mockFileMetadataRepository
-
-	actualError := server.StoreFile(mockStream)
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreFile(mockStream)
 
 	assert.Nil(t, actualError)
 	assert.NotEqual(t, uuid.Nil, generatedFileId)

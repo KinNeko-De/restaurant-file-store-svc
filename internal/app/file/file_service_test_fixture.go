@@ -10,6 +10,13 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMetadataRepository *MockFileMetadataRepository) FileServiceServer {
+	sut := FileServiceServer{}
+	FileRepositoryInstance = mockFileRepository
+	FileMetadataRepositoryInstance = mockFileMetadataRepository
+	return sut
+}
+
 func createValidFileStream(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
 	mockStream := NewFileService_StoreFileServer(t)
 
@@ -59,4 +66,9 @@ func createFileRepositoryMock(t *testing.T, fileWriter *MockWriteCloser, generat
 		Times(1)
 
 	return mockFileRepository
+}
+
+func createFileMetadataRepositoryMock(t *testing.T) *MockFileMetadataRepository {
+	mockFileMetadataRepository := &MockFileMetadataRepository{}
+	return mockFileMetadataRepository
 }
