@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/internal/testing/file"
 	"github.com/stretchr/testify/assert"
@@ -44,18 +43,18 @@ func TestFile(t *testing.T) {
 }
 */
 
-func TestStoreFile_TextFile(t *testing.T) {
+func TestStoreFile_FileDataIsSentInOneChunk(t *testing.T) {
 	sentFile := fixture.TextFile()
 	sentFileName := "test.txt"
 	expectedSize := uint64(4)
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedFileExtension := ".txt"
+	expectedRevision := int64(1)
 
 	var generatedFileId uuid.UUID
-	var protobufUuid *protobuf.Uuid
-	mockStream := CreateFileStreamMock(t, sentFileName, [][]byte{sentFile})
-	expectedResponse := CreateExpectedResponse(uint64(expectedSize), expectedMediaType, expectedFileExtension)
-	SetupExpectedResponse(t, mockStream, expectedResponse, &protobufUuid)
+	var actualResponse *v1.StoreFileResponse
+	mockStream := createValidFileStream(t, sentFileName, [][]byte{sentFile})
+	setupResponse(t, mockStream, &actualResponse, nil)
 	fileWriter := &MockWriteCloser{}
 	fileWriter.EXPECT().Write(sentFile).Return(4, nil).Times(1)
 	fileWriter.EXPECT().Close().Return(nil).Times(1)
@@ -75,9 +74,19 @@ func TestStoreFile_TextFile(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, generatedFileId)
 	assert.Equal(t, uuid.Version(0x4), generatedFileId.Version())
 	assert.Equal(t, uuid.RFC4122, generatedFileId.Variant())
-	assert.NotNil(t, &protobufUuid)
-	assert.NotEqual(t, "", protobufUuid.Value)
-	assert.Equal(t, generatedFileId.String(), protobufUuid.Value)
+
+	assert.NotNil(t, actualResponse)
+	assert.NotNil(t, actualResponse.StoredFile)
+	assert.NotNil(t, actualResponse.StoredFile.Id)
+	assert.Equal(t, expectedRevision, actualResponse.StoredFile.Revision)
+	assert.NotNil(t, actualResponse.StoredFileMetadata)
+	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
+	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
+	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
+	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
+
+	assert.Equal(t, generatedFileId.String(), actualResponse.StoredFile.Id.Value)
+
 }
 
 func TestStoreFile_PdfFile(t *testing.T) {
@@ -109,7 +118,7 @@ func TestStoreFile_PdfFile(t *testing.T) {
 	assert.Nil(t, actualError)
 }
 
-func CreateFileStreamMock(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
+func createValidFileStream(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
 	mockStream := NewFileService_StoreFileServer(t)
 
 	ctx := context.Background()
@@ -135,19 +144,8 @@ func CreateFileStreamMock(t *testing.T, fileName string, fileChunks [][]byte) *F
 	return mockStream
 }
 
-func SetupExpectedResponse(t *testing.T, mockStream *FileService_StoreFileServer, expectedResponse interface{}, protobufUuid **protobuf.Uuid) {
-	mockStream.EXPECT().SendAndClose(expectedResponse).
-		Run(func(_a0 *v1.StoreFileResponse) {
-			*protobufUuid = _a0.StoredFile.Id
-		}).Return(nil).Times(1)
-}
-
-func CreateExpectedResponse(expectedSize uint64, expectedMediaType string, expectedFileExtension string) interface{} {
-	return mock.MatchedBy(func(response *v1.StoreFileResponse) bool {
-		return response.GetStoredFile().GetRevision() == 1 &&
-			response.GetStoredFileMetadata().GetSize() == expectedSize &&
-			response.GetStoredFileMetadata().GetMediaType() == expectedMediaType &&
-			response.GetStoredFileMetadata().GetExtension() == expectedFileExtension &&
-			response.StoredFileMetadata.CreatedAt != nil
-	})
+func setupResponse(t *testing.T, mockStream *FileService_StoreFileServer, actualResponse **v1.StoreFileResponse, err error) {
+	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
+		*actualResponse = response
+	}).Return(err).Times(1)
 }
