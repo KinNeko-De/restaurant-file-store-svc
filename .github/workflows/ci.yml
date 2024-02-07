@@ -5,7 +5,7 @@ on:
       - 'documentation/**'
 
 env:
-  MAJOR_MINOR_PATCH: 0.0.2
+  MAJOR_MINOR_PATCH: 0.0.4
   GIN_MODE: release
   MAIN_PACKAGE: 'cmd/file-store-svc/main.go'
 
@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: '^1.21.0'
       - name: "Installed go version"
@@ -78,19 +78,19 @@ jobs:
           grep -v -E -f .covignore coverage.out > coverage.filtered.out
           mv coverage.filtered.out coverage.out
       - name: "Code coverage"
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
       - name: "Build artifacts"
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./build/dockerfile
           push: false
           tags: ${{ steps.semantic_version.outputs.semantic_version }} # on push later
       - name: Create semantic versioning git tag for golang
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             github.rest.git.createRef({
