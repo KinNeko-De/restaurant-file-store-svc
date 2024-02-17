@@ -32,18 +32,14 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 		return err
 	}
 
-	totalFileSize, sniff, fileId, err := writeFile(stream)
+	fileMetadata, err := writeFile(stream, metaData.Name)
 	if err != nil {
 		return err
 	}
 
-	contentType := http.DetectContentType(sniff)
-	extension := filepath.Ext(metaData.Name)
-	createdAt := time.Now().UTC()
+	FileMetadataRepositoryInstance.CreateFileMetadata(stream.Context(), fileMetadata)
 
-	// TODO Store file metadata
-
-	response, err := createStoreFileResponse(fileId, totalFileSize, contentType, extension, createdAt)
+	response, err := createStoreFileResponse(fileMetadata)
 	if err != nil {
 		logger.Logger.Err(err).Msg("failed to to create response")
 		return status.Error(codes.Internal, "failed to create response. please retry the request")
@@ -58,21 +54,31 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	return nil
 }
 
-func writeFile(stream apiRestaurantFile.FileService_StoreFileServer) (uint64, []byte, uuid.UUID, error) {
+func writeFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName string) (FileMetadata, error) {
 	fileId := uuid.New()
+	revisionId := uuid.New()
 	f, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, 0)
 	if err != nil {
 		logger.Logger.Err(err).Msg("ferror while creating file")
-		return 0, nil, uuid.Nil, status.Error(codes.Internal, "failed to write file. please retry the request")
+		return FileMetadata{}, status.Error(codes.Internal, "failed to write file. please retry the request")
 	}
 	defer f.Close()
 
 	totalFileSize, sniff, err := receiveChunks(stream, f)
 	if err != nil {
-		return 0, nil, uuid.Nil, err
+		return FileMetadata{}, err
 	}
 
-	return totalFileSize, sniff, fileId, nil
+	fileMetadata := FileMetadata{
+		FileId:     fileId,
+		RevisionId: revisionId,
+		Extension:  filepath.Ext(fileName),
+		Size:       totalFileSize,
+		MediaType:  http.DetectContentType(sniff),
+		CreatedAt:  time.Now().UTC(),
+	}
+
+	return fileMetadata, nil
 }
 
 func receiveChunks(stream apiRestaurantFile.FileService_StoreFileServer, f io.WriteCloser) (uint64, []byte, error) {
@@ -134,21 +140,25 @@ func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, *
 	return false, msg, nil
 }
 
-func createStoreFileResponse(fileId uuid.UUID, totalFileSize uint64, contentType string, extension string, createdAt time.Time) (*apiRestaurantFile.StoreFileResponse, error) {
-	fileUuid, err := apiProtobuf.ToProtobuf(fileId)
+func createStoreFileResponse(fileMetadata FileMetadata) (*apiRestaurantFile.StoreFileResponse, error) {
+	fileUuid, err := apiProtobuf.ToProtobuf(fileMetadata.FileId)
+	if err != nil {
+		return nil, err
+	}
+	revisionUuid, err := apiProtobuf.ToProtobuf(fileMetadata.RevisionId)
 	if err != nil {
 		return nil, err
 	}
 	var response = &apiRestaurantFile.StoreFileResponse{
 		StoredFile: &apiRestaurantFile.StoredFile{
-			Id:       fileUuid,
-			Revision: 1,
+			Id:         fileUuid,
+			RevisionId: revisionUuid,
 		},
 		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
-			CreatedAt: timestamppb.New(createdAt),
-			Size:      totalFileSize,
-			MediaType: contentType,
-			Extension: extension,
+			CreatedAt: timestamppb.New(fileMetadata.CreatedAt),
+			Size:      fileMetadata.Size,
+			MediaType: fileMetadata.MediaType,
+			Extension: fileMetadata.Extension,
 		},
 	}
 	return response, nil
