@@ -46,7 +46,6 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	expectedSize := uint64(4)
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedFileExtension := ".txt"
-	expectedRevision := int64(1)
 
 	var generatedFileId *uuid.UUID
 	var actualResponse *v1.StoreFileResponse
@@ -67,7 +66,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
-	assert.Equal(t, expectedRevision, actualResponse.StoredFile.Revision)
+	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotNil(t, actualResponse.StoredFileMetadata)
 	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
 	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
@@ -109,7 +108,6 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	expectedSize := uint64(51124)
 	expectedMediaType := "application/pdf"
 	expectedFileExtension := ".pdf"
-	expectedRevision := int64(1)
 
 	var generatedFileId *uuid.UUID
 	var actualResponse *v1.StoreFileResponse
@@ -126,7 +124,7 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
-	assert.Equal(t, expectedRevision, actualResponse.StoredFile.Revision)
+	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotNil(t, actualResponse.StoredFileMetadata)
 	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
 	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)

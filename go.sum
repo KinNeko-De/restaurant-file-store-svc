@@ -29,8 +29,8 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0 h1:Wqo399gCIufwto+VfwCSvsnfGpF
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0/go.mod h1:qmOFXW2epJhM0qSnUUYpldc7gVz2KMQwJ/QYCDIa7XU=
 github.com/kinneko-de/api-contract/golang/kinnekode/protobuf v0.2.6 h1:P/bmMTvi57jqUTezcChZaU7jOJBr6yWKV4M/i4O2KaA=
 github.com/kinneko-de/api-contract/golang/kinnekode/protobuf v0.2.6/go.mod h1:INEvaeyuCHxooxfQgXNk1SCwXWLXqxkD6H6ge+qzjGQ=
-github.com/kinneko-de/api-contract/golang/kinnekode/restaurant v0.0.2-store-files.14 h1:4B/m8GYt7sY0faf4iAaahMVhmJPUqeOVTlwcZQShFHI=
-github.com/kinneko-de/api-contract/golang/kinnekode/restaurant v0.0.2-store-files.14/go.mod h1:cfKjJPDTsKxrIHi0ECw0xRJd3fqE0Oxeq2MjTNmTzhs=
+github.com/kinneko-de/api-contract/golang/kinnekode/restaurant v0.0.2-store-files.16 h1:9jiVk5sBVPBF50PMSZvUxZ9TkmRNo3UmCXgfwqZ73oY=
+github.com/kinneko-de/api-contract/golang/kinnekode/restaurant v0.0.2-store-files.16/go.mod h1:PPXnt7P38Dj1IlHZxQofSMX+QrTQ1LIEwNM+JlLRUUU=
 github.com/klauspost/compress v1.13.6 h1:P76CopJELS0TiO2mebmnzgWaajssP/EszplttgQxcgc=
 github.com/klauspost/compress v1.13.6/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=

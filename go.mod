@@ -30,7 +30,7 @@ require (
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0 // indirect
 	github.com/kinneko-de/api-contract/golang/kinnekode/protobuf v0.2.6
-	github.com/kinneko-de/api-contract/golang/kinnekode/restaurant v0.0.2-store-files.14
+	github.com/kinneko-de/api-contract/golang/kinnekode/restaurant v0.0.2-store-files.16
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
