@@ -7,7 +7,7 @@ import (
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"go.opentelemetry.io/otel"
 
-	"github.com/kinneko-de/restaurant-document-generate-svc/build"
+	"github.com/kinneko-de/restaurant-file-store-svc/build"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	api "go.opentelemetry.io/otel/metric"
