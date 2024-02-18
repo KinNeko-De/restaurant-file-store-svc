@@ -137,12 +137,14 @@ func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, *
 }
 
 func createStoreFileResponse(createdFileMetadata *FileMetadata) (*apiRestaurantFile.StoreFileResponse, error) {
+	revison := createdFileMetadata.LatestRevision()
+
 	fileUuid, err := apiProtobuf.ToProtobuf(createdFileMetadata.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	revisionUuid, err := apiProtobuf.ToProtobuf(createdFileMetadata.Revisions[0].Id)
+	revisionUuid, err := apiProtobuf.ToProtobuf(revison.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -154,9 +156,9 @@ func createStoreFileResponse(createdFileMetadata *FileMetadata) (*apiRestaurantF
 		},
 		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
 			CreatedAt: timestamppb.New(createdFileMetadata.CreatedAt),
-			Size:      createdFileMetadata.Revisions[0].Size,
-			MediaType: createdFileMetadata.Revisions[0].MediaType,
-			Extension: createdFileMetadata.Revisions[0].Extension,
+			Size:      revison.Size,
+			MediaType: revison.MediaType,
+			Extension: revison.Extension,
 		},
 	}
 	return response, nil
