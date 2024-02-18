@@ -23,7 +23,7 @@ func ConnectToDatabase(ctx context.Context, databaseStopped chan struct{}, datab
 	go listenToGracefulShutdown(ctx, client, databaseStopped)
 	logger.Logger.Debug().Msg("connecting to database")
 
-	err := initializePersistence(ctx, config)
+	err := initializeMongoDb(ctx, config)
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func ConnectToDatabase(ctx context.Context, databaseStopped chan struct{}, datab
 	return nil
 }
 
-func initializePersistence(ctx context.Context, config MongoDBConfig) error {
+func initializeMongoDb(ctx context.Context, config MongoDBConfig) error {
 	fileMetadataRepository, err := initializeMongoDbFileMetadataRepository(ctx, config)
 	if err != nil {
 		return err
@@ -69,13 +69,10 @@ func createClient(ctx context.Context, hostUri string) (*mongo.Client, error) {
 		return nil, err
 	}
 
-	// TODO Activate ping as soon as mongodb is started in pipeline and the tests are separated in unit and component tests
-	/*
-		err = client.Ping(gracefulAbort, nil)
-		if err != nil {
-			return nil, err
-		}
-	*/
+	err = client.Ping(gracefulAbort, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return client, nil
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
-	fixture "github.com/kinneko-de/restaurant-file-store-svc/internal/testing/file"
+	fixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/file"
 	"github.com/stretchr/testify/assert"
 )
 

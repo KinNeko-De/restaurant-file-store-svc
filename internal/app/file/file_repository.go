@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	FileRepositoryInstance FileRepository = nil
+	FileRepositoryInstance FileRepository
 )
 
 type FileRepository interface {

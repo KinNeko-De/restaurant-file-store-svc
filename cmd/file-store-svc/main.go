@@ -21,11 +21,15 @@ func main() {
 	grpcServerStarted := make(chan struct{})
 	databaseDisconnected := make(chan struct{})
 	databaseConnected := make(chan struct{})
+	storageDisconnected := make(chan struct{})
+	storageConnected := make(chan struct{})
 	go server.StartGrpcServer(grpcServerStopped, grpcServerStarted)
 	go server.InitializeDatabase(ctx, databaseDisconnected, databaseConnected)
+	go server.InitializeStorage(ctx, storageDisconnected, storageConnected)
 
 	go func() {
 		<-databaseConnected
+		<-storageConnected
 		<-grpcServerStarted
 		logger.Logger.Info().Msg("Application started.")
 		health.Ready()
@@ -33,6 +37,7 @@ func main() {
 
 	<-grpcServerStopped
 	<-databaseDisconnected
+	<-storageDisconnected
 	provider.Shutdown(ctx)
 	cancel()
 	logger.Logger.Info().Msg("Application stopped.")
