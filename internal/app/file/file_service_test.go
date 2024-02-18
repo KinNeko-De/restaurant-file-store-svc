@@ -1,44 +1,16 @@
 package file
 
 import (
+	context "context"
 	"testing"
 
 	"github.com/google/uuid"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/file"
+	ioFixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/io"
 	"github.com/stretchr/testify/assert"
+	mock "github.com/stretchr/testify/mock"
 )
-
-func TestArray(t *testing.T) {
-	// target2 := [6]int{}
-	target := make([]int, 6)
-	first := []int{1, 2, 3}
-	second := []int{4, 5}
-	size := 0
-	copy(target[size:], first)
-	size += len(first)
-	copy(target[size:], second)
-	size += len(second)
-	target = target[:size]
-}
-
-/*
-func TestFile(t *testing.T) {
-	file, _ := os.Open("protobuf.pdf")
-	stat, _ := file.Stat()
-	bs := make([]byte, stat.Size())
-	_, _ = bufio.NewReader(file).Read(bs)
-	variable := ""
-	for _, b := range bs {
-		variable += strconv.FormatUint(uint64(b), 10)
-		variable += ", "
-	}
-
-	output, _ := os.Create("test.txt")
-	output.WriteString(variable)
-	output.Close()
-}
-*/
 
 func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
 	sentFile := fixture.TextFile()
@@ -49,9 +21,9 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 
 	var generatedFileId *uuid.UUID
 	var actualResponse *v1.StoreFileResponse
-	mockStream := createValidFileStream(t, sentFileName, [][]byte{sentFile})
-	setupSuccessfulResponse(t, mockStream, &actualResponse)
-	fileWriter := createWriterCloserMock(t, [][]byte{sentFile})
+	mockStream := fixture.CreateValidFileStream(t, sentFileName, [][]byte{sentFile})
+	fixture.SetupSuccessfulResponse(t, mockStream, &actualResponse)
+	fileWriter := ioFixture.CreateWriterCloserMock(t, [][]byte{sentFile})
 	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
 	mockFileMetadataRepository := createFileMetadataRepositoryMock(t)
 
@@ -84,9 +56,9 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 
 	var generatedFileId *uuid.UUID
 	var actualResponse *v1.StoreFileResponse
-	mockStream := createValidFileStream(t, sentFileName, [][]byte{sentFile})
-	setupSuccessfulResponse(t, mockStream, &actualResponse)
-	fileWriter := createWriterCloserMock(t, [][]byte{sentFile})
+	mockStream := fixture.CreateValidFileStream(t, sentFileName, [][]byte{sentFile})
+	fixture.SetupSuccessfulResponse(t, mockStream, &actualResponse)
+	fileWriter := ioFixture.CreateWriterCloserMock(t, [][]byte{sentFile})
 	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
 	mockFileMetadataRepository := createFileMetadataRepositoryMock(t)
 
@@ -103,7 +75,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 
 func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
 	sentFile := fixture.PdfFile()
-	chunks := splitIntoChunks(sentFile, 256)
+	chunks := fixture.SplitIntoChunks(sentFile, 256)
 	sentFileName := "test.pdf"
 	expectedSize := uint64(51124)
 	expectedMediaType := "application/pdf"
@@ -111,9 +83,9 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 
 	var generatedFileId *uuid.UUID
 	var actualResponse *v1.StoreFileResponse
-	mockStream := createValidFileStream(t, sentFileName, chunks)
-	setupSuccessfulResponse(t, mockStream, &actualResponse)
-	fileWriter := createWriterCloserMock(t, chunks)
+	mockStream := fixture.CreateValidFileStream(t, sentFileName, chunks)
+	fixture.SetupSuccessfulResponse(t, mockStream, &actualResponse)
+	fileWriter := ioFixture.CreateWriterCloserMock(t, chunks)
 	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
 	mockFileMetadataRepository := createFileMetadataRepositoryMock(t)
 
@@ -130,4 +102,26 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
 	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
 	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
+}
+
+func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMetadataRepository *MockFileMetadataRepository) FileServiceServer {
+	sut := FileServiceServer{}
+	FileRepositoryInstance = mockFileRepository
+	FileMetadataRepositoryInstance = mockFileMetadataRepository
+	return sut
+}
+
+func createFileRepositoryMock(t *testing.T, fileWriter *ioFixture.MockWriteCloser, generatedFileId **uuid.UUID) *MockFileRepository {
+	mockFileRepository := &MockFileRepository{}
+	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), 0).
+		Run(func(ctx context.Context, fileId uuid.UUID, chunkSize int) { *generatedFileId = &fileId }).
+		Return(fileWriter, nil).
+		Times(1)
+
+	return mockFileRepository
+}
+
+func createFileMetadataRepositoryMock(t *testing.T) *MockFileMetadataRepository {
+	mockFileMetadataRepository := &MockFileMetadataRepository{}
+	return mockFileMetadataRepository
 }
