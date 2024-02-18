@@ -67,6 +67,7 @@ jobs:
         id: version_check
         run: |
           last_main_version=$(git tag --list 'v[0-9]*\.[0-9]*\.[0-9]*' | grep -Pv "v[0-9]*\.[0-9]*\.[0-9]*-" | sort -V | tail -n 1)
+          echo "companre last_main_version: $last_main_version with v$MAJOR_MINOR_PATCH"
           if [[ $(echo -e "v$MAJOR_MINOR_PATCH\n$last_main_version" | sort -V | head -n 1) == "v$MAJOR_MINOR_PATCH" ]]; then
             echo "Please upgrade the version number to a higher value than $last_main_version"
             exit 1
