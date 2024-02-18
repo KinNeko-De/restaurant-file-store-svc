@@ -63,6 +63,14 @@ jobs:
           echo 'SEMANTIC_VERSION: ' $SEMANTIC_VERSION
           echo "semantic_version=$SEMANTIC_VERSION" >> $GITHUB_OUTPUT
           echo "major_minor_patch=$MAJOR_MINOR_PATCH" >> $GITHUB_OUTPUT
+      - name: "version upgraded?"
+        id: version_check
+        run: |
+          last_main_version=$(git tag --list 'v[0-9]*\.[0-9]*\.[0-9]*' | grep -Pv "\d-\d" | sort -V | tail -n 1)
+          if [[ $last_main_version == $MAJOR_MINOR_PATCH ]]; then
+            echo "Please upgrade the version number to a higher value than $last_main_version"
+            exit 1
+          fi
       - name: Write version txt
         id: version_txt
         run: |
