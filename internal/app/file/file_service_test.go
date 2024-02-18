@@ -123,5 +123,6 @@ func createFileRepositoryMock(t *testing.T, fileWriter *ioFixture.MockWriteClose
 
 func createFileMetadataRepositoryMock(t *testing.T) *MockFileMetadataRepository {
 	mockFileMetadataRepository := &MockFileMetadataRepository{}
+	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(&FileMetadata{})).Return(nil).Times(1)
 	return mockFileMetadataRepository
 }

@@ -2,10 +2,7 @@ package file
 
 import (
 	"io"
-	"net/http"
-	"path/filepath"
 	"reflect"
-	"time"
 
 	"github.com/google/uuid"
 	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
@@ -24,26 +21,18 @@ type FileServiceServer struct {
 	apiRestaurantFile.UnimplementedFileServiceServer
 }
 
-const sniffSize = 512 // defined by the net/http package
-
 func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_StoreFileServer) error {
-	metaData, err := receiveMetadata(stream)
+	fileName, err := receiveMetadata(stream)
 	if err != nil {
 		return err
 	}
 
-	totalFileSize, sniff, fileId, revisionId, err := writeFile(stream)
+	createdFile, err := createFile(stream, fileName.Name)
 	if err != nil {
 		return err
 	}
 
-	contentType := http.DetectContentType(sniff)
-	extension := filepath.Ext(metaData.Name)
-	createdAt := time.Now().UTC()
-
-	// TODO Store file metadata
-
-	response, err := createStoreFileResponse(fileId, revisionId, totalFileSize, contentType, extension, createdAt)
+	response, err := createStoreFileResponse(createdFile)
 	if err != nil {
 		logger.Logger.Err(err).Msg("failed to to create response")
 		return status.Error(codes.Internal, "failed to create response. please retry the request")
@@ -58,22 +47,34 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	return nil
 }
 
-func writeFile(stream apiRestaurantFile.FileService_StoreFileServer) (uint64, []byte, uuid.UUID, uuid.UUID, error) {
+func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName string) (*FileMetadata, error) {
 	fileId := uuid.New()
-	revisionId := uuid.New()
-	f, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, 0)
+
+	totalFileSize, sniff, err := writeFile(stream, fileId)
+	if err != nil {
+		return nil, err
+	}
+
+	createdRevision := newRevision(fileName, totalFileSize, sniff)
+	createdFileMetadata := newFileMetadata(fileId, createdRevision)
+
+	err = FileMetadataRepositoryInstance.StoreFileMetadata(stream.Context(), createdFileMetadata)
+	return createdFileMetadata, err
+}
+
+func writeFile(stream apiRestaurantFile.FileService_StoreFileServer, fileId uuid.UUID) (uint64, []byte, error) {
+	fileWriter, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, 0)
 	if err != nil {
 		logger.Logger.Err(err).Msg("ferror while creating file")
-		return 0, nil, uuid.Nil, uuid.Nil, status.Error(codes.Internal, "failed to write file. please retry the request")
+		return 0, nil, status.Error(codes.Internal, "failed to write file. please retry the request")
 	}
-	defer f.Close()
-
-	totalFileSize, sniff, err := receiveChunks(stream, f)
+	defer fileWriter.Close()
+	totalFileSize, sniff, err := receiveChunks(stream, fileWriter)
 	if err != nil {
-		return 0, nil, uuid.Nil, uuid.Nil, err
+		return 0, nil, err
 	}
 
-	return totalFileSize, sniff, fileId, revisionId, nil
+	return totalFileSize, sniff, nil
 }
 
 func receiveChunks(stream apiRestaurantFile.FileService_StoreFileServer, f io.WriteCloser) (uint64, []byte, error) {
@@ -135,13 +136,13 @@ func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, *
 	return false, msg, nil
 }
 
-func createStoreFileResponse(fileId uuid.UUID, revisionId uuid.UUID, totalFileSize uint64, contentType string, extension string, createdAt time.Time) (*apiRestaurantFile.StoreFileResponse, error) {
-	fileUuid, err := apiProtobuf.ToProtobuf(fileId)
+func createStoreFileResponse(createdFile *FileMetadata) (*apiRestaurantFile.StoreFileResponse, error) {
+	fileUuid, err := apiProtobuf.ToProtobuf(createdFile.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	revisionUuid, err := apiProtobuf.ToProtobuf(revisionId)
+	revisionUuid, err := apiProtobuf.ToProtobuf(createdFile.Revisions[0].Id)
 	if err != nil {
 		return nil, err
 	}
@@ -152,10 +153,10 @@ func createStoreFileResponse(fileId uuid.UUID, revisionId uuid.UUID, totalFileSi
 			RevisionId: revisionUuid,
 		},
 		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
-			CreatedAt: timestamppb.New(createdAt),
-			Size:      totalFileSize,
-			MediaType: contentType,
-			Extension: extension,
+			CreatedAt: timestamppb.New(createdFile.CreatedAt),
+			Size:      createdFile.Revisions[0].Size,
+			MediaType: createdFile.Revisions[0].MediaType,
+			Extension: createdFile.Revisions[0].Extension,
 		},
 	}
 	return response, nil
