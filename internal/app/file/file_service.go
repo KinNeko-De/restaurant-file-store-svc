@@ -27,12 +27,12 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 		return err
 	}
 
-	createdFile, err := createFile(stream, fileName.Name)
+	createdFileMetadata, err := createFile(stream, fileName.Name)
 	if err != nil {
 		return err
 	}
 
-	response, err := createStoreFileResponse(createdFile)
+	response, err := createStoreFileResponse(createdFileMetadata)
 	if err != nil {
 		logger.Logger.Err(err).Msg("failed to to create response")
 		return status.Error(codes.Internal, "failed to create response. please retry the request")
@@ -136,13 +136,13 @@ func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, *
 	return false, msg, nil
 }
 
-func createStoreFileResponse(createdFile *FileMetadata) (*apiRestaurantFile.StoreFileResponse, error) {
-	fileUuid, err := apiProtobuf.ToProtobuf(createdFile.Id)
+func createStoreFileResponse(createdFileMetadata *FileMetadata) (*apiRestaurantFile.StoreFileResponse, error) {
+	fileUuid, err := apiProtobuf.ToProtobuf(createdFileMetadata.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	revisionUuid, err := apiProtobuf.ToProtobuf(createdFile.Revisions[0].Id)
+	revisionUuid, err := apiProtobuf.ToProtobuf(createdFileMetadata.Revisions[0].Id)
 	if err != nil {
 		return nil, err
 	}
@@ -153,10 +153,10 @@ func createStoreFileResponse(createdFile *FileMetadata) (*apiRestaurantFile.Stor
 			RevisionId: revisionUuid,
 		},
 		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
-			CreatedAt: timestamppb.New(createdFile.CreatedAt),
-			Size:      createdFile.Revisions[0].Size,
-			MediaType: createdFile.Revisions[0].MediaType,
-			Extension: createdFile.Revisions[0].Extension,
+			CreatedAt: timestamppb.New(createdFileMetadata.CreatedAt),
+			Size:      createdFileMetadata.Revisions[0].Size,
+			MediaType: createdFileMetadata.Revisions[0].MediaType,
+			Extension: createdFileMetadata.Revisions[0].Extension,
 		},
 	}
 	return response, nil
