@@ -5,7 +5,6 @@ go 1.21.6
 require (
 	github.com/go-logr/zerologr v1.2.3
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
-	github.com/kinneko-de/restaurant-document-generate-svc v0.8.2
 	github.com/rs/zerolog v1.31.0
 	github.com/stretchr/testify v1.8.4
 	go.mongodb.org/mongo-driver v1.13.1
