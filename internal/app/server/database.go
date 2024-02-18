@@ -12,20 +12,20 @@ import (
 const MongoDBUriEnv = "MONGODB_URI"
 const MongoDbDatabaseNameEnv = "MONGODB_DATABASE"
 
-func InitializeDatabase(ctx context.Context, databaseStoped chan struct{}, databaseConnected chan struct{}) {
-	err := connectToDatabase(ctx, databaseStoped, databaseConnected)
+func InitializeDatabase(ctx context.Context, databaseConnected chan struct{}, databaseStopped chan struct{}) {
+	err := connectToDatabase(ctx, databaseConnected, databaseStopped)
 	if err != nil {
 		logger.Logger.Error().Err(err).Msg("failed to connect to database")
 		os.Exit(51)
 	}
 }
 
-func connectToDatabase(ctx context.Context, databaseStoped chan struct{}, databaseConnected chan struct{}) error {
+func connectToDatabase(ctx context.Context, databaseConnected chan struct{}, databaseStopped chan struct{}) error {
 	config, err := loadDatabaseConfig()
 	if err != nil {
 		return err
 	}
-	err = persistence.ConnectToDatabase(ctx, databaseStoped, databaseConnected, config)
+	err = persistence.ConnectToDatabase(ctx, databaseConnected, databaseStopped, config)
 	return err
 }
 

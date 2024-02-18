@@ -18,7 +18,7 @@ type MongoDBConfig struct {
 	FileMetadataCollection string
 }
 
-func ConnectToDatabase(ctx context.Context, databaseStopped chan struct{}, databaseConnected chan struct{}, config MongoDBConfig) error {
+func ConnectToDatabase(ctx context.Context, databaseConnected chan struct{}, databaseStopped chan struct{}, config MongoDBConfig) error {
 	var client *mongo.Client
 	go listenToGracefulShutdown(ctx, client, databaseStopped)
 	logger.Logger.Debug().Msg("connecting to database")

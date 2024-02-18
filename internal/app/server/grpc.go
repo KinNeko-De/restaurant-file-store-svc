@@ -3,8 +3,6 @@ package server
 import (
 	"net"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/rs/zerolog/log"
 
@@ -18,15 +16,16 @@ import (
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/health"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server/shutdown"
 )
 
-func StartGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan struct{}) {
+func StartGrpcServer(grpcServerStarted chan struct{}, grpcServerStopped chan struct{}) {
 	port := ":3110" // todo load from env, move os.exit up to here and refactor tests
 
-	startGrpcServer(grpcServerStopped, grpcServerStarted, port)
+	startGrpcServer(grpcServerStarted, grpcServerStopped, port)
 }
 
-func startGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan struct{}, port string) {
+func startGrpcServer(grpcServerStarted chan struct{}, grpcServerStopped chan struct{}, port string) {
 	listener, err := net.Listen("tcp", port)
 	if err != nil {
 		logger.Logger.Error().Err(err).Msgf("Failed to listen on port %v", port)
@@ -38,8 +37,7 @@ func startGrpcServer(grpcServerStopped chan struct{}, grpcServerStarted chan str
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	health.Initialize(healthServer)
 
-	var gracefulStop = make(chan os.Signal, 1)
-	signal.Notify(gracefulStop, syscall.SIGTERM, syscall.SIGINT)
+	var gracefulStop = shutdown.CreateGracefulStop()
 	logger.Logger.Debug().Msg("starting grpc server")
 
 	go func() {

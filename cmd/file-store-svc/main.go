@@ -17,12 +17,12 @@ func main() {
 
 	provider := server.InitializeMetrics(ctx)
 
-	grpcServerStopped := make(chan struct{})
 	grpcServerStarted := make(chan struct{})
-	databaseDisconnected := make(chan struct{})
+	grpcServerStopped := make(chan struct{})
 	databaseConnected := make(chan struct{})
-	go server.StartGrpcServer(grpcServerStopped, grpcServerStarted)
-	go server.InitializeDatabase(ctx, databaseDisconnected, databaseConnected)
+	databaseDisconnected := make(chan struct{})
+	go server.StartGrpcServer(grpcServerStarted, grpcServerStopped)
+	go server.InitializeDatabase(ctx, databaseConnected, databaseDisconnected)
 
 	go func() {
 		<-databaseConnected
