@@ -24,6 +24,8 @@ go.work
 scripts/sut/bin/**
 # sut log files
 scripts/sut/log/**
+# build app
+bin/**
 
 # Downloaded mockery generator
 tools/mockery/windows_x86_64*
