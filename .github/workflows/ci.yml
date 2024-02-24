@@ -85,19 +85,13 @@ jobs:
           go test ./... -race -coverpkg=all -coverprofile=coverage.out -timeout 5m
       - name: Create docker network
         run: 'docker network create restaurant'
-      - name: Start database
-        run: docker compose -f scripts/sut/database-compose.yml up --wait --quiet-pull
-      # execute tests that require database
+      
       - name: Start system under test
         run: docker compose -f scripts/sut/sut-compose.yml up --wait --quiet-pull
+      # execute tests that require database
       # execute tests that require system under test
-      - name: Show database logs
-        run: docker compose -f scripts/sut/database-compose.yml logs
       - name: Show system under test logs
         run: docker compose -f scripts/sut/sut-compose.yml logs
-      - name: Stop database
-        if: always()
-        run: docker compose -f scripts/sut/database-compose.yml down
       - name: Stop system under test
         if: always()
         run: docker compose -f scripts/sut/sut-compose.yml down
