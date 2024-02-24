@@ -85,7 +85,6 @@ jobs:
           go test ./... -race -coverpkg=all -coverprofile=coverage.out -timeout 5m
       - name: Create docker network
         run: 'docker network create restaurant'
-      
       - name: Start system under test
         run: docker compose -f scripts/sut/sut-compose.yml up --wait --quiet-pull
       # execute tests that require database
