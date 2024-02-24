@@ -79,7 +79,7 @@ jobs:
           tee build/version.txt <<< ${{ steps.semantic_version.outputs.semantic_version }}
       - name: "Build"
         run: |
-          go build -o scripts/sut/bin/app ./${{ env.MAIN_PACKAGE }}
+          go build -o build/bin/app ./${{ env.MAIN_PACKAGE }}
       - name: "Test"
         run: |
           go test ./... -race -coverpkg=all -coverprofile=coverage.out -timeout 5m
