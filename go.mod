@@ -1,6 +1,8 @@
 module github.com/kinneko-de/restaurant-file-store-svc
 
-go 1.21.6
+go 1.21.1
+
+toolchain go1.22.0
 
 require (
 	github.com/go-logr/zerologr v1.2.3

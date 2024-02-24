@@ -5,7 +5,7 @@ on:
       - 'documentation/**'
 
 env:
-  MAJOR_MINOR_PATCH: 0.0.9
+  MAJOR_MINOR_PATCH: 0.0.10
   GIN_MODE: release
   MAIN_PACKAGE: 'cmd/file-store-svc/main.go'
 
@@ -24,7 +24,7 @@ jobs:
       - name: Install go
         uses: actions/setup-go@v5
         with:
-          go-version: '^1.21.6'
+          go-version: '^1.21.1'
       - name: "Installed go version"
         run: go version
       - uses: actions/checkout@v4
@@ -83,6 +83,17 @@ jobs:
       - name: "Test"
         run: |
           go test ./... -race -coverpkg=all -coverprofile=coverage.out -timeout 5m
+      - name: Create docker network
+        run: 'docker network create restaurant'
+      - name: Start system under test
+        run: docker compose -f scripts/sut/sut-compose.yml up --wait --quiet-pull
+      # execute tests that require database
+      # execute tests that require system under test
+      - name: Show system under test logs
+        run: docker compose -f scripts/sut/sut-compose.yml logs
+      - name: Stop system under test
+        if: always()
+        run: docker compose -f scripts/sut/sut-compose.yml down
       - name: "Exclude codecoverage"
         run: |
           grep -v -E -f .covignore coverage.out > coverage.filtered.out

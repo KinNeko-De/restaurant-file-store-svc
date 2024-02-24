@@ -12,7 +12,8 @@ services:
       - project-network
     container_name: restaurant-file-store-svc
     build:
-      dockerfile: ../../build/dockerfile
+      context: ../..
+      dockerfile: build/dockerfile
     ports:
       - "42985:3110"
     environment:
