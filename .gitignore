@@ -20,11 +20,9 @@
 # Go workspace file
 go.work
 
-# sut bin files
-scripts/sut/bin/**
 # sut log files
 scripts/sut/log/**
-# build app
+# builded app
 bin/**
 
 # Downloaded mockery generator
