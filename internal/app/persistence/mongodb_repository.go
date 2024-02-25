@@ -18,11 +18,11 @@ type MongoDBRepository struct {
 }
 
 func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, fileMetadata *file.FileMetadata) error {
-	test := bson.D{
-		{Key: "_id", Value: fileMetadata.Id},
+	dataModel := bson.D{
+		{Key: "_id", Value: fileMetadata.Id.String()},
 	}
 
-	_, err := repository.collection.InsertOne(ctx, test)
+	_, err := repository.collection.InsertOne(ctx, dataModel)
 	if err != nil {
 		return fmt.Errorf("failed to insert file metadata: %v", err)
 	}
