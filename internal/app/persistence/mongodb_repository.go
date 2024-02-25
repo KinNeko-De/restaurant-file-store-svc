@@ -2,9 +2,11 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -16,7 +18,16 @@ type MongoDBRepository struct {
 }
 
 func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, fileMetadata *file.FileMetadata) error {
-	panic("not implemented")
+	test := bson.D{
+		{Key: "_id", Value: fileMetadata.Id},
+	}
+
+	_, err := repository.collection.InsertOne(ctx, test)
+	if err != nil {
+		return fmt.Errorf("failed to insert file metadata: %v", err)
+	}
+
+	return nil
 }
 
 func CreateMongoDBClient(ctx context.Context, uri string) (*mongo.Client, error) {
