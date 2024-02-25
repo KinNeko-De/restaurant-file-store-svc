@@ -11,7 +11,7 @@ import (
 const sniffSize = 512 // defined by the net/http package
 
 type FileMetadata struct {
-	Id        uuid.UUID
+	Id        uuid.UUID `bson:"_id"`
 	Revisions []Revision
 	CreatedAt time.Time
 }

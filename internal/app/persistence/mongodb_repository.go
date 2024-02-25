@@ -3,10 +3,11 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -18,9 +19,7 @@ type MongoDBRepository struct {
 }
 
 func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, fileMetadata *file.FileMetadata) error {
-	dataModel := bson.D{
-		{Key: "_id", Value: fileMetadata.Id.String()},
-	}
+	dataModel := fileMetadataToDataModel(fileMetadata)
 
 	_, err := repository.collection.InsertOne(ctx, dataModel)
 	if err != nil {
@@ -28,6 +27,26 @@ func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, file
 	}
 
 	return nil
+}
+
+func fileMetadataToDataModel(domainModel *file.FileMetadata) fileMetadata {
+	return fileMetadata{
+		Id: domainModel.Id,
+	}
+}
+
+type fileMetadata struct {
+	Id        uuid.UUID `bson:"_id"`
+	Revisions []revision
+	CreatedAt time.Time
+}
+
+type revision struct {
+	Id        uuid.UUID
+	Extension string
+	MediaType string
+	Size      uint64
+	CreatedAt time.Time
 }
 
 func CreateMongoDBClient(ctx context.Context, uri string) (*mongo.Client, error) {

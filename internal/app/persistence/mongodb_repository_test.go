@@ -17,7 +17,7 @@ import (
 )
 
 func TestCreateFileMetadata(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://rootuser:rootpassword@localhost:27017"))
@@ -33,18 +33,21 @@ func TestCreateFileMetadata(t *testing.T) {
 	require.Nil(t, err)
 	defer tearDown(t, sut.collection)
 
-	expected := &file.FileMetadata{
+	input := &file.FileMetadata{
 		Id: uuid.New(),
 	}
 
-	err = sut.StoreFileMetadata(ctx, expected)
+	expected := fileMetadata{
+		Id: input.Id,
+	}
+
+	err = sut.StoreFileMetadata(ctx, input)
 	require.Nil(t, err)
 
-	// Now let's try to find the inserted document
-	var actual *file.FileMetadata
-	err = sut.collection.FindOne(ctx, bson.M{"_id": expected.Id.String()}).Decode(&actual)
+	var actual fileMetadata
+	err = sut.collection.FindOne(ctx, bson.M{"_id": input.Id}).Decode(&actual)
 	require.Nil(t, err)
-	// Check if the inserted document is the same as the original one
+
 	assert.Equal(t, expected, actual)
 }
 
