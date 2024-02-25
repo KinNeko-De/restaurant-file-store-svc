@@ -20,7 +20,7 @@ func TestCreateFileMetadata(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://rootuser:rootpassword@localhost:27017"))
 	require.Nil(t, err)
 
 	defer func() {
@@ -47,4 +47,15 @@ func TestCreateFileMetadata(t *testing.T) {
 	// Check if the inserted document is the same as the original one
 	assert.Equal(t, expected, actual)
 
+	tearDown(t, collection)
+}
+
+func tearDown(t *testing.T, collection *mongo.Collection) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := collection.Drop(ctx); err != nil {
+		t.Fatalf("Failed to drop collection: %v", err)
+	}
 }
