@@ -31,23 +31,21 @@ func TestCreateFileMetadata(t *testing.T) {
 
 	sut, err := NewMongoDBRepository(ctx, client, "test", "test")
 	require.Nil(t, err)
+	defer tearDown(t, sut.collection)
 
 	expected := &file.FileMetadata{
 		Id: uuid.New(),
 	}
 
 	err = sut.StoreFileMetadata(ctx, expected)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	// Now let's try to find the inserted document
 	var actual file.FileMetadata
 	err = sut.collection.FindOne(ctx, bson.M{"_id": expected.Id}).Decode(&actual)
-	assert.Nil(t, err)
-
+	require.Nil(t, err)
 	// Check if the inserted document is the same as the original one
 	assert.Equal(t, expected, actual)
-
-	tearDown(t, collection)
 }
 
 func tearDown(t *testing.T, collection *mongo.Collection) {
