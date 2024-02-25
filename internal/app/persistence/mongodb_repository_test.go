@@ -41,7 +41,7 @@ func TestCreateFileMetadata(t *testing.T) {
 	require.Nil(t, err)
 
 	// Now let's try to find the inserted document
-	var actual file.FileMetadata
+	var actual *file.FileMetadata
 	err = sut.collection.FindOne(ctx, bson.M{"_id": expected.Id}).Decode(&actual)
 	require.Nil(t, err)
 	// Check if the inserted document is the same as the original one
