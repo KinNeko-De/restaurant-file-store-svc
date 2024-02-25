@@ -5,7 +5,7 @@ on:
       - 'documentation/**'
 
 env:
-  MAJOR_MINOR_PATCH: 0.0.10
+  MAJOR_MINOR_PATCH: 0.0.11
   GIN_MODE: release
   MAIN_PACKAGE: 'cmd/file-store-svc/main.go'
 
@@ -80,13 +80,16 @@ jobs:
       - name: "Build"
         run: |
           go build -o bin/app ./${{ env.MAIN_PACKAGE }}
-      - name: "Test"
+      - name: "UnitTest"
         run: |
           go test ./... -race -coverpkg=all -coverprofile=coverage.out -timeout 5m
       - name: Create docker network
         run: 'docker network create restaurant'
       - name: Start system under test
         run: docker compose -f scripts/sut/sut-compose.yml up --wait --quiet-pull
+      - name: "ComponentTest"
+        run: |
+          go test ./... -race -coverpkg=all -coverprofile=coverage.out -parallel=1 -timeout=5m --tags=component
       # execute tests that require database
       # execute tests that require system under test
       - name: Show system under test logs
