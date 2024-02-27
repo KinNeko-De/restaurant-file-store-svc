@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -31,18 +30,18 @@ func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, file
 
 func fileMetadataToDataModel(domainModel *file.FileMetadata) fileMetadata {
 	return fileMetadata{
-		Id: domainModel.Id,
+		Id: domainModel.Id.String(),
 	}
 }
 
 type fileMetadata struct {
-	Id        uuid.UUID `bson:"_id"`
+	Id        string `bson:"_id"`
 	Revisions []revision
 	CreatedAt time.Time
 }
 
 type revision struct {
-	Id        uuid.UUID
+	Id        string `bson:"_id"`
 	Extension string
 	MediaType string
 	Size      uint64

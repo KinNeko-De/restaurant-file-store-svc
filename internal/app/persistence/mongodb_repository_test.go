@@ -38,14 +38,14 @@ func TestCreateFileMetadata(t *testing.T) {
 	}
 
 	expected := fileMetadata{
-		Id: input.Id,
+		Id: input.Id.String(),
 	}
 
 	err = sut.StoreFileMetadata(ctx, input)
 	require.Nil(t, err)
 
 	var actual fileMetadata
-	err = sut.collection.FindOne(ctx, bson.M{"_id": input.Id}).Decode(&actual)
+	err = sut.collection.FindOne(ctx, bson.M{"_id": input.Id.String()}).Decode(&actual)
 	require.Nil(t, err)
 
 	assert.Equal(t, expected, actual)
