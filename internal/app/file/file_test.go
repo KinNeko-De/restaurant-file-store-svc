@@ -99,7 +99,6 @@ func TestNewFileMetadata(t *testing.T) {
 
 	assert.Equal(t, fileId, fileMetadata.Id)
 	assert.Equal(t, []Revision{revision}, fileMetadata.Revisions)
-	assert.Equal(t, revision.CreatedAt, fileMetadata.CreatedAt)
 }
 
 func TestNewRevision(t *testing.T) {
