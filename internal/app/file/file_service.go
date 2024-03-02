@@ -59,7 +59,7 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 	createdFileMetadata := newFileMetadata(fileId, createdRevision)
 
 	err = FileMetadataRepositoryInstance.StoreFileMetadata(stream.Context(), createdFileMetadata)
-	return createdFileMetadata, err
+	return &createdFileMetadata, err
 }
 
 func writeFile(stream apiRestaurantFile.FileService_StoreFileServer, fileId uuid.UUID) (uint64, []byte, error) {

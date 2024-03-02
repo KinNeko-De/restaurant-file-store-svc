@@ -17,7 +17,7 @@ type MongoDBRepository struct {
 	collection *mongo.Collection
 }
 
-func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, fileMetadata *file.FileMetadata) error {
+func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, fileMetadata file.FileMetadata) error {
 	dataModel := fileMetadataToDataModel(fileMetadata)
 
 	_, err := repository.collection.InsertOne(ctx, dataModel)
@@ -28,9 +28,29 @@ func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, file
 	return nil
 }
 
-func fileMetadataToDataModel(domainModel *file.FileMetadata) fileMetadata {
+func fileMetadataToDataModel(domainModel file.FileMetadata) fileMetadata {
 	return fileMetadata{
-		Id: domainModel.Id.String(),
+		Id:        domainModel.Id.String(),
+		CreatedAt: domainModel.CreatedAt,
+		Revisions: revisionsToDataModel(domainModel.Revisions),
+	}
+}
+
+func revisionsToDataModel(domainModel []file.Revision) []revision {
+	var dataModel []revision
+	for _, revision := range domainModel {
+		dataModel = append(dataModel, revisionToDataModel(revision))
+	}
+	return dataModel
+}
+
+func revisionToDataModel(domainModel file.Revision) revision {
+	return revision{
+		Id:        domainModel.Id.String(),
+		Extension: domainModel.Extension,
+		MediaType: domainModel.MediaType,
+		Size:      domainModel.Size,
+		CreatedAt: domainModel.CreatedAt,
 	}
 }
 

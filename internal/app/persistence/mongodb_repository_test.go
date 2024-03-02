@@ -33,7 +33,7 @@ func TestCreateFileMetadata(t *testing.T) {
 	require.Nil(t, err)
 	defer tearDown(t, sut.collection)
 
-	input := &file.FileMetadata{
+	input := file.FileMetadata{
 		Id: uuid.New(),
 	}
 

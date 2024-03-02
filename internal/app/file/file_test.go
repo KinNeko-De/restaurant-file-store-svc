@@ -12,7 +12,7 @@ import (
 
 func TestFileMetadata_AddRevision(t *testing.T) {
 	fileId := uuid.New()
-	revision := &Revision{
+	revision := Revision{
 		Id:        uuid.New(),
 		Extension: ".txt",
 		MediaType: "text/plain",
@@ -20,7 +20,7 @@ func TestFileMetadata_AddRevision(t *testing.T) {
 		CreatedAt: time.Now().UTC(),
 	}
 
-	fileMetadata := &FileMetadata{
+	fileMetadata := FileMetadata{
 		Id:        fileId,
 		Revisions: []Revision{},
 		CreatedAt: time.Now().UTC(),
@@ -29,19 +29,19 @@ func TestFileMetadata_AddRevision(t *testing.T) {
 	fileMetadata.AddRevision(revision)
 
 	assert.Equal(t, 1, len(fileMetadata.Revisions))
-	assert.Equal(t, revision, &fileMetadata.Revisions[0])
+	assert.Equal(t, revision, fileMetadata.Revisions[0])
 }
 
 func TestFileMetadata_LatestRevision_TwoRevisions(t *testing.T) {
 	fileId := uuid.New()
-	revision1 := &Revision{
+	revision1 := Revision{
 		Id:        uuid.New(),
 		Extension: ".txt",
 		MediaType: "text/plain; charset=utf-8",
 		Size:      1024,
 		CreatedAt: time.Now().UTC(),
 	}
-	expectedRevision := &Revision{
+	expectedRevision := Revision{
 		Id:        uuid.New(),
 		Extension: ".pdf",
 		MediaType: "application/pdf",
@@ -51,7 +51,7 @@ func TestFileMetadata_LatestRevision_TwoRevisions(t *testing.T) {
 
 	fileMetadata := &FileMetadata{
 		Id:        fileId,
-		Revisions: []Revision{*revision1, *expectedRevision},
+		Revisions: []Revision{revision1, expectedRevision},
 		CreatedAt: time.Now().UTC(),
 	}
 
@@ -62,14 +62,14 @@ func TestFileMetadata_LatestRevision_TwoRevisions(t *testing.T) {
 
 func TestFileMetadata_LastUpdatedAt_TwoRevisions(t *testing.T) {
 	fileId := uuid.New()
-	revision1 := &Revision{
+	revision1 := Revision{
 		Id:        uuid.New(),
 		Extension: ".txt",
 		MediaType: "text/plain; charset=utf-8",
 		Size:      1024,
 		CreatedAt: time.Now().UTC().Add(-time.Hour),
 	}
-	revision2 := &Revision{
+	revision2 := Revision{
 		Id:        uuid.New(),
 		Extension: ".pdf",
 		MediaType: "application/pdf",
@@ -79,7 +79,7 @@ func TestFileMetadata_LastUpdatedAt_TwoRevisions(t *testing.T) {
 
 	fileMetadata := &FileMetadata{
 		Id:        fileId,
-		Revisions: []Revision{*revision1, *revision2},
+		Revisions: []Revision{revision1, revision2},
 		CreatedAt: time.Now().UTC(),
 	}
 
@@ -90,7 +90,7 @@ func TestFileMetadata_LastUpdatedAt_TwoRevisions(t *testing.T) {
 
 func TestNewFileMetadata(t *testing.T) {
 	fileId := uuid.New()
-	revision := &Revision{
+	revision := Revision{
 		Id:        uuid.New(),
 		Extension: ".txt",
 		MediaType: "text/plain; charset=utf-8",
@@ -101,7 +101,7 @@ func TestNewFileMetadata(t *testing.T) {
 	fileMetadata := newFileMetadata(fileId, revision)
 
 	assert.Equal(t, fileId, fileMetadata.Id)
-	assert.Equal(t, []Revision{*revision}, fileMetadata.Revisions)
+	assert.Equal(t, []Revision{revision}, fileMetadata.Revisions)
 	assert.Equal(t, revision.CreatedAt, fileMetadata.CreatedAt)
 }
 

@@ -7,5 +7,5 @@ var (
 )
 
 type FileMetadataRepository interface {
-	StoreFileMetadata(ctx context.Context, fileMetadata *FileMetadata) error
+	StoreFileMetadata(ctx context.Context, fileMetadata FileMetadata) error
 }
