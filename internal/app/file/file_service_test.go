@@ -134,6 +134,7 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 }
 
 func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMetadataRepository *MockFileMetadataRepository) FileServiceServer {
+	t.Helper()
 	sut := FileServiceServer{}
 	FileRepositoryInstance = mockFileRepository
 	FileMetadataRepositoryInstance = mockFileMetadataRepository
@@ -141,6 +142,7 @@ func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMet
 }
 
 func createFileRepositoryMock(t *testing.T, fileWriter *ioFixture.MockWriteCloser, generatedFileId **uuid.UUID) *MockFileRepository {
+	t.Helper()
 	mockFileRepository := &MockFileRepository{}
 	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), 0).
 		Run(func(ctx context.Context, fileId uuid.UUID, chunkSize int) { *generatedFileId = &fileId }).
@@ -151,6 +153,7 @@ func createFileRepositoryMock(t *testing.T, fileWriter *ioFixture.MockWriteClose
 }
 
 func createFileMetadataRepositoryMock(t *testing.T, storedFileMetadata **FileMetadata) *MockFileMetadataRepository {
+	t.Helper()
 	mockFileMetadataRepository := &MockFileMetadataRepository{}
 	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(FileMetadata{})).
 		Run(func(ctx context.Context, fileMetadata FileMetadata) { *storedFileMetadata = &fileMetadata }).
