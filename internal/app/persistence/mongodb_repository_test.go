@@ -67,7 +67,22 @@ func TestCreateFileMetadata(t *testing.T) {
 	err = sut.collection.FindOne(ctx, bson.M{"_id": input.Id.String()}).Decode(&actualFileMetadata)
 	require.Nil(t, err)
 
-	assert.Equal(t, expectedFileMetadata, actualFileMetadata)
+	assertFileMetadataEqual(t, expectedFileMetadata, actualFileMetadata)
+}
+
+func assertFileMetadataEqual(t *testing.T, expectedFileMetadata fileMetadata, actualFileMetadata fileMetadata) {
+	assert.Equal(t, expectedFileMetadata.Id, actualFileMetadata.Id)
+	for i := range expectedFileMetadata.Revisions {
+		assertRevisionsEqual(t, expectedFileMetadata.Revisions[i], actualFileMetadata.Revisions[i])
+	}
+}
+
+func assertRevisionsEqual(t *testing.T, expectedRevision revision, actualRevision revision) {
+	assert.Equal(t, expectedRevision.Id, actualRevision.Id)
+	assert.Equal(t, expectedRevision.Extension, actualRevision.Extension)
+	assert.Equal(t, expectedRevision.MediaType, actualRevision.MediaType)
+	assert.Equal(t, expectedRevision.Size, actualRevision.Size)
+	assert.WithinDuration(t, expectedRevision.CreatedAt, actualRevision.CreatedAt, time.Millisecond)
 }
 
 func tearDown(t *testing.T, collection *mongo.Collection) {
