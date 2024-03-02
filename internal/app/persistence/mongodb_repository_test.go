@@ -29,7 +29,7 @@ func TestCreateFileMetadata(t *testing.T) {
 		}
 	}()
 
-	sut, err := NewMongoDBRepository(ctx, client, "test", "test")
+	sut, err := NewMongoDBRepository(ctx, client, uuid.NewString(), t.Name()+uuid.NewString())
 	require.Nil(t, err)
 	defer tearDown(t, sut.collection)
 
