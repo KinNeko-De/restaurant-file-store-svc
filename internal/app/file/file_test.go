@@ -23,7 +23,6 @@ func TestFileMetadata_AddRevision(t *testing.T) {
 	fileMetadata := FileMetadata{
 		Id:        fileId,
 		Revisions: []Revision{},
-		CreatedAt: time.Now().UTC(),
 	}
 
 	fileMetadata.AddRevision(revision)
@@ -52,7 +51,6 @@ func TestFileMetadata_LatestRevision_TwoRevisions(t *testing.T) {
 	fileMetadata := &FileMetadata{
 		Id:        fileId,
 		Revisions: []Revision{revision1, expectedRevision},
-		CreatedAt: time.Now().UTC(),
 	}
 
 	latestRevision := fileMetadata.LatestRevision()
@@ -80,7 +78,6 @@ func TestFileMetadata_LastUpdatedAt_TwoRevisions(t *testing.T) {
 	fileMetadata := &FileMetadata{
 		Id:        fileId,
 		Revisions: []Revision{revision1, revision2},
-		CreatedAt: time.Now().UTC(),
 	}
 
 	lastUpdatedAt := fileMetadata.LastUpdatedAt()

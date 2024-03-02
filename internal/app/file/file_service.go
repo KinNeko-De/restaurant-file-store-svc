@@ -155,7 +155,7 @@ func createStoreFileResponse(createdFileMetadata *FileMetadata) (*apiRestaurantF
 			RevisionId: revisionUuid,
 		},
 		StoredFileMetadata: &apiRestaurantFile.StoredFileMetadata{
-			CreatedAt: timestamppb.New(createdFileMetadata.CreatedAt),
+			CreatedAt: timestamppb.New(revison.CreatedAt),
 			Size:      revison.Size,
 			MediaType: revison.MediaType,
 			Extension: revison.Extension,
