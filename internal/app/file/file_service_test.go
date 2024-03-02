@@ -20,12 +20,13 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	expectedFileExtension := ".txt"
 
 	var generatedFileId *uuid.UUID
+	var storedFileMetadata *FileMetadata
 	var actualResponse *v1.StoreFileResponse
 	mockStream := fixture.CreateValidFileStream(t, sentFileName, [][]byte{sentFile})
 	fixture.SetupSuccessfulResponse(t, mockStream, &actualResponse)
 	fileWriter := ioFixture.CreateWriterCloserMock(t, [][]byte{sentFile})
 	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
@@ -55,12 +56,13 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	expectedMediaType := "application/pdf"
 
 	var generatedFileId *uuid.UUID
+	var storedFileMetadata *FileMetadata
 	var actualResponse *v1.StoreFileResponse
 	mockStream := fixture.CreateValidFileStream(t, sentFileName, [][]byte{sentFile})
 	fixture.SetupSuccessfulResponse(t, mockStream, &actualResponse)
 	fileWriter := ioFixture.CreateWriterCloserMock(t, [][]byte{sentFile})
 	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
@@ -82,12 +84,13 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	expectedFileExtension := ".pdf"
 
 	var generatedFileId *uuid.UUID
+	var storedFileMetadata *FileMetadata
 	var actualResponse *v1.StoreFileResponse
 	mockStream := fixture.CreateValidFileStream(t, sentFileName, chunks)
 	fixture.SetupSuccessfulResponse(t, mockStream, &actualResponse)
 	fileWriter := ioFixture.CreateWriterCloserMock(t, chunks)
 	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
@@ -121,8 +124,12 @@ func createFileRepositoryMock(t *testing.T, fileWriter *ioFixture.MockWriteClose
 	return mockFileRepository
 }
 
-func createFileMetadataRepositoryMock(t *testing.T) *MockFileMetadataRepository {
+func createFileMetadataRepositoryMock(t *testing.T, storedFileMetadata **FileMetadata) *MockFileMetadataRepository {
 	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(&FileMetadata{})).Return(nil).Times(1)
+	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(FileMetadata{})).
+		Run(func(ctx context.Context, fileMetadata FileMetadata) { *storedFileMetadata = &fileMetadata }).
+		Return(nil).
+		Times(1)
+
 	return mockFileMetadataRepository
 }
