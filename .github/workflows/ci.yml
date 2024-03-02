@@ -82,14 +82,14 @@ jobs:
           go build -o bin/app ./${{ env.MAIN_PACKAGE }}
       - name: "UnitTest"
         run: |
-          go test ./... -race -coverpkg=all -coverprofile=coverage.out -timeout 5m
+          go test ./... -race -coverpkg=all -coverprofile=unit_coverage.out -timeout 5m
       - name: Create docker network
         run: 'docker network create restaurant'
       - name: Start system under test
         run: docker compose -f scripts/sut/sut-compose.yml up --wait --quiet-pull
       - name: "ComponentTest"
         run: |
-          go test ./... -race -coverpkg=all -coverprofile=coverage.out -timeout=5m --tags=component
+          go test ./... -race -coverpkg=all -coverprofile=component_coverage.out -timeout=5m --tags=component
       # execute tests that require database
       # execute tests that require system under test
       - name: Show system under test logs
@@ -97,15 +97,24 @@ jobs:
       - name: Stop system under test
         if: always()
         run: docker compose -f scripts/sut/sut-compose.yml down
-      - name: "Exclude codecoverage"
+      - name: "Exclude codecoverage and combine coverage files"
         run: |
-          grep -v -E -f .covignore coverage.out > coverage.filtered.out
-          mv coverage.filtered.out coverage.out
-      - name: "Code coverage"
+          grep -v -E -f .covignore unit_coverage.out > unit_coverage.filtered.out
+          grep -v -E -f .covignore component_coverage.out > component_coverage.filtered.out
+      - name: "Code coverage unit test"
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
+          file: ./unit_coverage.filtered.out
+          flags: unit
+      - name: "Code coverage component test"
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          file: ./component_coverage.filtered.out
+          flags: component
       - name: "Build artifacts"
         uses: docker/build-push-action@v5
         with:
