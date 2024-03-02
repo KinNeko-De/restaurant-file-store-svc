@@ -100,22 +100,20 @@ jobs:
       - name: "Exclude codecoverage and combine coverage files"
         run: |
           grep -v -E -f .covignore unit_coverage.out > unit_coverage.filtered.out
-          mv unit_coverage.filtered.out unit_coverage.out
           grep -v -E -f .covignore component_coverage.out > component_coverage.filtered.out
-          mv component_coverage.filtered.out component_coverage.out
       - name: "Code coverage unit test"
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
-          file: ./unit_coverage.filtered.out
+          files: ./unit_coverage.filtered.out
           flags: unit
       - name: "Code coverage component test"
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
-          file: ./component_coverage.filtered.out
+          files: ./component_coverage.filtered.out
           flags: component
       - name: "Build artifacts"
         uses: docker/build-push-action@v5
