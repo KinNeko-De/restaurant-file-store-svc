@@ -46,6 +46,16 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
 	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
 
+	assert.NotNil(t, storedFileMetadata)
+	assert.NotNil(t, storedFileMetadata.Id)
+	assert.NotNil(t, storedFileMetadata.Revisions)
+	assert.Len(t, storedFileMetadata.Revisions, 1)
+	assert.NotNil(t, storedFileMetadata.Revisions[0].Id)
+	assert.Equal(t, expectedSize, storedFileMetadata.Revisions[0].Size)
+	assert.Equal(t, expectedMediaType, storedFileMetadata.Revisions[0].MediaType)
+	assert.Equal(t, expectedFileExtension, storedFileMetadata.Revisions[0].Extension)
+	assert.NotNil(t, storedFileMetadata.Revisions[0].CreatedAt)
+
 	assert.Equal(t, generatedFileId.String(), actualResponse.StoredFile.Id.Value)
 }
 
@@ -73,6 +83,12 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	assert.NotNil(t, actualResponse.StoredFileMetadata)
 	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
 	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
+
+	assert.NotNil(t, storedFileMetadata)
+	assert.Len(t, storedFileMetadata.Revisions, 1)
+	assert.NotNil(t, storedFileMetadata.Revisions[0].Id)
+	assert.Equal(t, expectedSize, storedFileMetadata.Revisions[0].Size)
+	assert.Equal(t, expectedMediaType, storedFileMetadata.Revisions[0].MediaType)
 }
 
 func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
@@ -105,6 +121,16 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
 	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
 	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
+
+	assert.NotNil(t, storedFileMetadata)
+	assert.NotNil(t, storedFileMetadata.Id)
+	assert.NotNil(t, storedFileMetadata.Revisions)
+	assert.Len(t, storedFileMetadata.Revisions, 1)
+	assert.NotNil(t, storedFileMetadata.Revisions[0].Id)
+	assert.Equal(t, expectedSize, storedFileMetadata.Revisions[0].Size)
+	assert.Equal(t, expectedMediaType, storedFileMetadata.Revisions[0].MediaType)
+	assert.Equal(t, expectedFileExtension, storedFileMetadata.Revisions[0].Extension)
+	assert.NotNil(t, storedFileMetadata.Revisions[0].CreatedAt)
 }
 
 func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMetadataRepository *MockFileMetadataRepository) FileServiceServer {
