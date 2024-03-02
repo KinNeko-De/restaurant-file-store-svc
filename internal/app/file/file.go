@@ -13,7 +13,6 @@ const sniffSize = 512 // defined by the net/http package
 type FileMetadata struct {
 	Id        uuid.UUID
 	Revisions []Revision
-	CreatedAt time.Time
 }
 
 func (f *FileMetadata) AddRevision(revision Revision) {
@@ -22,6 +21,14 @@ func (f *FileMetadata) AddRevision(revision Revision) {
 
 func (f *FileMetadata) LatestRevision() Revision {
 	return f.Revisions[len(f.Revisions)-1]
+}
+
+func (f *FileMetadata) FirstRevision() Revision {
+	return f.Revisions[0]
+}
+
+func (f *FileMetadata) CreatedAt() time.Time {
+	return f.FirstRevision().CreatedAt
 }
 
 func (f *FileMetadata) LastUpdatedAt() time.Time {
@@ -40,7 +47,6 @@ func newFileMetadata(fileId uuid.UUID, initialRevision Revision) FileMetadata {
 	return FileMetadata{
 		Id:        fileId,
 		Revisions: []Revision{initialRevision},
-		CreatedAt: initialRevision.CreatedAt,
 	}
 }
 

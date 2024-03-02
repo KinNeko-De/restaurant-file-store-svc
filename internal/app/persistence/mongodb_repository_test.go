@@ -34,8 +34,8 @@ func TestCreateFileMetadata(t *testing.T) {
 	defer tearDown(t, sut.collection)
 
 	input := file.FileMetadata{
-		Id:        uuid.New(),
-		CreatedAt: time.Now().UTC(),
+		Id: uuid.New(),
+
 		Revisions: []file.Revision{
 			{
 				Id:        uuid.New(),
@@ -48,8 +48,7 @@ func TestCreateFileMetadata(t *testing.T) {
 	}
 
 	expectedFileMetadata := fileMetadata{
-		Id:        input.Id.String(),
-		CreatedAt: input.CreatedAt,
+		Id: input.Id.String(),
 		Revisions: []revision{
 			{
 				Id:        input.Revisions[0].Id.String(),

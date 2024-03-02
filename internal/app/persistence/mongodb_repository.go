@@ -31,7 +31,6 @@ func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, file
 func fileMetadataToDataModel(domainModel file.FileMetadata) fileMetadata {
 	return fileMetadata{
 		Id:        domainModel.Id.String(),
-		CreatedAt: domainModel.CreatedAt,
 		Revisions: revisionsToDataModel(domainModel.Revisions),
 	}
 }
@@ -57,7 +56,6 @@ func revisionToDataModel(domainModel file.Revision) revision {
 type fileMetadata struct {
 	Id        string `bson:"_id"`
 	Revisions []revision
-	CreatedAt time.Time
 }
 
 type revision struct {
