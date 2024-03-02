@@ -5,7 +5,7 @@ on:
       - 'documentation/**'
 
 env:
-  MAJOR_MINOR_PATCH: 0.0.11
+  MAJOR_MINOR_PATCH: 0.0.12
   GIN_MODE: release
   MAIN_PACKAGE: 'cmd/file-store-svc/main.go'
 
@@ -101,6 +101,11 @@ jobs:
           mv unit_coverage.filtered.out unit_coverage.out
           grep -v -E -f .covignore component_coverage.out > component_coverage.filtered.out
           mv component_coverage.filtered.out component_coverage.out
+      - name: "Code coverage" # known bug that files parameter is ignored https://github.com/codecov/codecov-action/issues/1285
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
       - name: "Code coverage" # known bug that files parameter is ignored https://github.com/codecov/codecov-action/issues/1285
         uses: codecov/codecov-action@v4
         with:
