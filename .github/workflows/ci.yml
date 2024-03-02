@@ -90,8 +90,6 @@ jobs:
       - name: "ComponentTest"
         run: |
           go test ./... -race -coverpkg=all -coverprofile=component_coverage.out -timeout=5m --tags=component
-      # execute tests that require database
-      # execute tests that require system under test
       - name: Show system under test logs
         run: docker compose -f scripts/sut/sut-compose.yml logs
       - name: Stop system under test
