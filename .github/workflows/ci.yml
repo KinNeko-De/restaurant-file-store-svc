@@ -82,7 +82,7 @@ jobs:
           go build -o bin/app ./${{ env.MAIN_PACKAGE }}
       - name: "UnitTest"
         run: |
-          go test ./... -race -coverpkg=all -coverprofile=unit_coverage.out -timeout 5m
+          go test ./... -race -coverpkg=all -coverprofile=unit_coverage.out -timeout 5m --tags=unit
       - name: Create docker network
         run: 'docker network create restaurant'
       - name: Start system under test
