@@ -34,21 +34,41 @@ func TestCreateFileMetadata(t *testing.T) {
 	defer tearDown(t, sut.collection)
 
 	input := file.FileMetadata{
-		Id: uuid.New(),
+		Id:        uuid.New(),
+		CreatedAt: time.Now().UTC(),
+		Revisions: []file.Revision{
+			{
+				Id:        uuid.New(),
+				Extension: ".txt",
+				MediaType: "text/plain",
+				Size:      1024,
+				CreatedAt: time.Now().UTC(),
+			},
+		},
 	}
 
-	expected := fileMetadata{
-		Id: input.Id.String(),
+	expectedFileMetadata := fileMetadata{
+		Id:        input.Id.String(),
+		CreatedAt: input.CreatedAt,
+		Revisions: []revision{
+			{
+				Id:        input.Revisions[0].Id.String(),
+				Extension: input.Revisions[0].Extension,
+				MediaType: input.Revisions[0].MediaType,
+				Size:      input.Revisions[0].Size,
+				CreatedAt: input.Revisions[0].CreatedAt,
+			},
+		},
 	}
 
 	err = sut.StoreFileMetadata(ctx, input)
 	require.Nil(t, err)
 
-	var actual fileMetadata
-	err = sut.collection.FindOne(ctx, bson.M{"_id": input.Id.String()}).Decode(&actual)
+	var actualFileMetadata fileMetadata
+	err = sut.collection.FindOne(ctx, bson.M{"_id": input.Id.String()}).Decode(&actualFileMetadata)
 	require.Nil(t, err)
 
-	assert.Equal(t, expected, actual)
+	assert.Equal(t, expectedFileMetadata, actualFileMetadata)
 }
 
 func tearDown(t *testing.T, collection *mongo.Collection) {
