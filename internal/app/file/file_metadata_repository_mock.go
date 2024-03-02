@@ -22,7 +22,7 @@ func (_m *MockFileMetadataRepository) EXPECT() *MockFileMetadataRepository_Expec
 }
 
 // StoreFileMetadata provides a mock function with given fields: ctx, fileMetadata
-func (_m *MockFileMetadataRepository) StoreFileMetadata(ctx context.Context, fileMetadata *FileMetadata) error {
+func (_m *MockFileMetadataRepository) StoreFileMetadata(ctx context.Context, fileMetadata FileMetadata) error {
 	ret := _m.Called(ctx, fileMetadata)
 
 	if len(ret) == 0 {
@@ -30,7 +30,7 @@ func (_m *MockFileMetadataRepository) StoreFileMetadata(ctx context.Context, fil
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *FileMetadata) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, FileMetadata) error); ok {
 		r0 = rf(ctx, fileMetadata)
 	} else {
 		r0 = ret.Error(0)
@@ -46,14 +46,14 @@ type MockFileMetadataRepository_StoreFileMetadata_Call struct {
 
 // StoreFileMetadata is a helper method to define mock.On call
 //   - ctx context.Context
-//   - fileMetadata *FileMetadata
+//   - fileMetadata FileMetadata
 func (_e *MockFileMetadataRepository_Expecter) StoreFileMetadata(ctx interface{}, fileMetadata interface{}) *MockFileMetadataRepository_StoreFileMetadata_Call {
 	return &MockFileMetadataRepository_StoreFileMetadata_Call{Call: _e.mock.On("StoreFileMetadata", ctx, fileMetadata)}
 }
 
-func (_c *MockFileMetadataRepository_StoreFileMetadata_Call) Run(run func(ctx context.Context, fileMetadata *FileMetadata)) *MockFileMetadataRepository_StoreFileMetadata_Call {
+func (_c *MockFileMetadataRepository_StoreFileMetadata_Call) Run(run func(ctx context.Context, fileMetadata FileMetadata)) *MockFileMetadataRepository_StoreFileMetadata_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*FileMetadata))
+		run(args[0].(context.Context), args[1].(FileMetadata))
 	})
 	return _c
 }
@@ -63,7 +63,7 @@ func (_c *MockFileMetadataRepository_StoreFileMetadata_Call) Return(_a0 error) *
 	return _c
 }
 
-func (_c *MockFileMetadataRepository_StoreFileMetadata_Call) RunAndReturn(run func(context.Context, *FileMetadata) error) *MockFileMetadataRepository_StoreFileMetadata_Call {
+func (_c *MockFileMetadataRepository_StoreFileMetadata_Call) RunAndReturn(run func(context.Context, FileMetadata) error) *MockFileMetadataRepository_StoreFileMetadata_Call {
 	_c.Call.Return(run)
 	return _c
 }
