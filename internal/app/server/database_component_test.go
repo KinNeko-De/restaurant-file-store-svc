@@ -17,7 +17,7 @@ func TestConnectToDatabase_ConfigIsComplete(t *testing.T) {
 	databaseConnected := make(chan struct{})
 	databaseStopped := make(chan struct{})
 
-	err := connectToDatabase(context.Background(), databaseConnected, databaseStopped)
+	_, err := connectToMongoDB(context.Background(), databaseConnected, databaseStopped)
 
 	assert.NoError(t, err)
 	// assert the database is connected is ensured over the ping of the client
