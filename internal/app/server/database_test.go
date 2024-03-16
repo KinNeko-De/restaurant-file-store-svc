@@ -1,4 +1,4 @@
-//go:build component
+//go:build unit
 
 package server
 
@@ -37,19 +37,6 @@ func TestConnectToDatabase_UriMalformed(t *testing.T) {
 	err := connectToDatabase(context.Background(), make(chan struct{}), make(chan struct{}))
 
 	require.Error(t, err)
-}
-
-func TestConnectToDatabase_ConfigIsComplete(t *testing.T) {
-	t.Setenv(MongoDBUriEnv, "mongodb://rootuser:rootpassword@mongodb:27017")
-	t.Setenv(MongoDbDatabaseNameEnv, "testdatabase")
-
-	databaseConnected := make(chan struct{})
-	databaseStopped := make(chan struct{})
-
-	err := connectToDatabase(context.Background(), databaseConnected, databaseStopped)
-
-	assert.NoError(t, err)
-	// TODO assert that the database is connected
 }
 
 func TestInitializeDatabase_AnyError_AppCrash(t *testing.T) {
