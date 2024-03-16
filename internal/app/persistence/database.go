@@ -18,31 +18,19 @@ type MongoDBConfig struct {
 	FileMetadataCollection string
 }
 
-func ConnectToDatabase(ctx context.Context, databaseConnected chan struct{}, databaseDisconnected chan struct{}, config MongoDBConfig) error {
-	var client *mongo.Client
-	go listenToGracefulShutdown(ctx, client, databaseDisconnected)
+func ConnectToMongoDB(ctx context.Context, databaseConnected chan struct{}, databaseDisconnected chan struct{}, config MongoDBConfig) (file.FileMetadataRepository, error) {
+	mongoDBRepository, err := initializeMongoDbFileMetadataRepository(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+	go listenToGracefulShutdown(ctx, mongoDBRepository.client, databaseDisconnected)
 	logger.Logger.Debug().Msg("connecting to database")
 
-	err := initializePersistence(ctx, config)
-	if err != nil {
-		return err
-	}
-
 	close(databaseConnected)
-	return nil
+	return mongoDBRepository, nil
 }
 
-func initializePersistence(ctx context.Context, config MongoDBConfig) error {
-	fileMetadataRepository, err := initializeMongoDbFileMetadataRepository(ctx, config)
-	if err != nil {
-		return err
-	}
-
-	file.FileMetadataRepositoryInstance = fileMetadataRepository
-	return nil
-}
-
-func initializeMongoDbFileMetadataRepository(ctx context.Context, config MongoDBConfig) (file.FileMetadataRepository, error) {
+func initializeMongoDbFileMetadataRepository(ctx context.Context, config MongoDBConfig) (*MongoDBRepository, error) {
 	client, err := createClient(ctx, config.HostUri)
 	if err != nil {
 		return nil, err

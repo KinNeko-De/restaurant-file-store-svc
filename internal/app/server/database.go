@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/persistence"
 )
@@ -12,21 +13,27 @@ import (
 const MongoDBUriEnv = "MONGODB_URI"
 const MongoDbDatabaseNameEnv = "MONGODB_DATABASE"
 
-func InitializeDatabase(ctx context.Context, databaseConnected chan struct{}, databaseStopped chan struct{}) {
-	err := connectToDatabase(ctx, databaseConnected, databaseStopped)
+func InitializeDatabase(ctx context.Context, databaseConnected chan struct{}, databaseDisconnected chan struct{}) {
+	fileMetadataRepository, err := connectToMongoDB(ctx, databaseConnected, databaseDisconnected)
 	if err != nil {
 		logger.Logger.Error().Err(err).Msg("failed to connect to database")
 		os.Exit(51)
 	}
+
+	file.FileMetadataRepositoryInstance = fileMetadataRepository
 }
 
-func connectToDatabase(ctx context.Context, databaseConnected chan struct{}, databaseStopped chan struct{}) error {
+func injectFileMetadaRepository(fileMetadataRepository file.FileMetadataRepository) {
+	file.FileMetadataRepositoryInstance = fileMetadataRepository
+}
+
+func connectToMongoDB(ctx context.Context, databaseConnected chan struct{}, databaseDisconnected chan struct{}) (file.FileMetadataRepository, error) {
 	config, err := loadDatabaseConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = persistence.ConnectToDatabase(ctx, databaseConnected, databaseStopped, config)
-	return err
+	repository, err := persistence.ConnectToMongoDB(ctx, databaseConnected, databaseDisconnected, config)
+	return repository, err
 }
 
 func loadDatabaseConfig() (persistence.MongoDBConfig, error) {
