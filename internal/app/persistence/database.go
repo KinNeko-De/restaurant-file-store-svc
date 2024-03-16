@@ -19,13 +19,13 @@ type MongoDBConfig struct {
 }
 
 func ConnectToMongoDB(ctx context.Context, databaseConnected chan struct{}, databaseDisconnected chan struct{}, config MongoDBConfig) (file.FileMetadataRepository, error) {
+	logger.Logger.Debug().Msg("connecting to mongodb")
 	mongoDBRepository, err := initializeMongoDbFileMetadataRepository(ctx, config)
 	if err != nil {
 		close(databaseDisconnected)
 		return nil, err
 	}
 	go listenToGracefulShutdown(ctx, mongoDBRepository.client, databaseDisconnected)
-	logger.Logger.Debug().Msg("connecting to database")
 
 	close(databaseConnected)
 	return mongoDBRepository, nil
