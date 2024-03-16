@@ -18,9 +18,9 @@ type MongoDBConfig struct {
 	FileMetadataCollection string
 }
 
-func ConnectToDatabase(ctx context.Context, databaseConnected chan struct{}, databaseStopped chan struct{}, config MongoDBConfig) error {
+func ConnectToDatabase(ctx context.Context, databaseConnected chan struct{}, databaseDisconnected chan struct{}, config MongoDBConfig) error {
 	var client *mongo.Client
-	go listenToGracefulShutdown(ctx, client, databaseStopped)
+	go listenToGracefulShutdown(ctx, client, databaseDisconnected)
 	logger.Logger.Debug().Msg("connecting to database")
 
 	err := initializePersistence(ctx, config)
@@ -52,13 +52,13 @@ func initializeMongoDbFileMetadataRepository(ctx context.Context, config MongoDB
 	return fileMetadataRepository, err
 }
 
-func listenToGracefulShutdown(ctx context.Context, client *mongo.Client, databaseStopped chan struct{}) {
+func listenToGracefulShutdown(ctx context.Context, client *mongo.Client, databaseDisconnected chan struct{}) {
 	gracefulShutdown := shutdown.CreateGracefulStop()
 	<-gracefulShutdown
 	if client != nil {
 		client.Disconnect(ctx)
 	}
-	close(databaseStopped)
+	close(databaseDisconnected)
 }
 
 func createClient(ctx context.Context, hostUri string) (*mongo.Client, error) {
