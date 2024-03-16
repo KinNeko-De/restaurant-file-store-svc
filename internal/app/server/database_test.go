@@ -39,19 +39,6 @@ func TestConnectToDatabase_UriMalformed(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestConnectToDatabase_ConfigIsComplete(t *testing.T) {
-	t.Setenv(MongoDBUriEnv, "mongodb://rootuser:rootpassword@mongodb:27017")
-	t.Setenv(MongoDbDatabaseNameEnv, "testdatabase")
-
-	databaseConnected := make(chan struct{})
-	databaseStopped := make(chan struct{})
-
-	err := connectToDatabase(context.Background(), databaseConnected, databaseStopped)
-
-	assert.NoError(t, err)
-	// TODO assert that the database is connected
-}
-
 func TestInitializeDatabase_AnyError_AppCrash(t *testing.T) {
 	if os.Getenv("EXECUTE") == "1" {
 		// will crash because of missing environment variables

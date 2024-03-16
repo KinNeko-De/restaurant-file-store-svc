@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
+	"github.com/kinneko-de/restaurant-file-store-svc/test/testing/mongodb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -20,7 +21,7 @@ func TestCreateFileMetadata(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://rootuser:rootpassword@localhost:27017"))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongodb.MongoDbServer))
 	require.Nil(t, err)
 
 	defer func() {
