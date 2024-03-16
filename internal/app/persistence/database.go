@@ -69,13 +69,10 @@ func createClient(ctx context.Context, hostUri string) (*mongo.Client, error) {
 		return nil, err
 	}
 
-	// TODO Activate ping as soon as mongodb is started in pipeline and the tests are separated in unit and component tests
-	/*
-		err = client.Ping(gracefulAbort, nil)
-		if err != nil {
-			return nil, err
-		}
-	*/
+	err = client.Ping(gracefulAbort, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return client, nil
 }
