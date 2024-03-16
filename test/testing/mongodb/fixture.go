@@ -1,3 +1,3 @@
 package mongodb
 
-const MongoDbServer = "mongodb://rootuser:rootpassword@mongodb:27017"
+const MongoDbServer = "mongodb://rootuser:rootpassword@localhost:27017"
