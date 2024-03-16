@@ -50,11 +50,11 @@ func newFileMetadata(fileId uuid.UUID, initialRevision Revision) FileMetadata {
 	}
 }
 
-func newRevision(fileName string, fileSize uint64, sniff []byte) Revision {
+func newRevision(revisionId uuid.UUID, fileName string, fileSize uint64, sniff []byte) Revision {
 	createdAt := time.Now().UTC()
 
 	return Revision{
-		Id:        uuid.New(),
+		Id:        revisionId,
 		Extension: filepath.Ext(fileName),
 		MediaType: http.DetectContentType(sniff),
 		Size:      fileSize,

@@ -49,21 +49,22 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 
 func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName string) (*FileMetadata, error) {
 	fileId := uuid.New()
+	revisionId := uuid.New()
 
-	totalFileSize, sniff, err := writeFile(stream, fileId)
+	totalFileSize, sniff, err := writeFile(stream, fileId, revisionId)
 	if err != nil {
 		return nil, err
 	}
 
-	createdRevision := newRevision(fileName, totalFileSize, sniff)
+	createdRevision := newRevision(revisionId, fileName, totalFileSize, sniff)
 	createdFileMetadata := newFileMetadata(fileId, createdRevision)
 
 	err = FileMetadataRepositoryInstance.StoreFileMetadata(stream.Context(), createdFileMetadata)
 	return &createdFileMetadata, err
 }
 
-func writeFile(stream apiRestaurantFile.FileService_StoreFileServer, fileId uuid.UUID) (uint64, []byte, error) {
-	fileWriter, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, 0)
+func writeFile(stream apiRestaurantFile.FileService_StoreFileServer, fileId uuid.UUID, revisionId uuid.UUID) (uint64, []byte, error) {
+	fileWriter, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, revisionId, 0)
 	if err != nil {
 		logger.Logger.Err(err).Msg("ferror while creating file")
 		return 0, nil, status.Error(codes.Internal, "failed to write file. please retry the request")
