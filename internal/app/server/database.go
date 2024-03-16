@@ -28,7 +28,7 @@ func injectFileMetadaRepository(fileMetadataRepository file.FileMetadataReposito
 }
 
 func connectToMongoDB(ctx context.Context, databaseConnected chan struct{}, databaseDisconnected chan struct{}) (file.FileMetadataRepository, error) {
-	config, err := loadDatabaseConfig()
+	config, err := loadMongoDBConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func connectToMongoDB(ctx context.Context, databaseConnected chan struct{}, data
 	return repository, err
 }
 
-func loadDatabaseConfig() (persistence.MongoDBConfig, error) {
+func loadMongoDBConfig() (persistence.MongoDBConfig, error) {
 	uri, found := os.LookupEnv(MongoDBUriEnv)
 	if !found {
 		return persistence.MongoDBConfig{}, fmt.Errorf("mongodb uri is not configured. Expected environment variable %v", MongoDBUriEnv)
