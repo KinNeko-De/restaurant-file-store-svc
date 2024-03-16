@@ -21,6 +21,7 @@ type MongoDBConfig struct {
 func ConnectToMongoDB(ctx context.Context, databaseConnected chan struct{}, databaseDisconnected chan struct{}, config MongoDBConfig) (file.FileMetadataRepository, error) {
 	mongoDBRepository, err := initializeMongoDbFileMetadataRepository(ctx, config)
 	if err != nil {
+		close(databaseDisconnected)
 		return nil, err
 	}
 	go listenToGracefulShutdown(ctx, mongoDBRepository.client, databaseDisconnected)
@@ -43,9 +44,7 @@ func initializeMongoDbFileMetadataRepository(ctx context.Context, config MongoDB
 func listenToGracefulShutdown(ctx context.Context, client *mongo.Client, databaseDisconnected chan struct{}) {
 	gracefulShutdown := shutdown.CreateGracefulStop()
 	<-gracefulShutdown
-	if client != nil {
-		client.Disconnect(ctx)
-	}
+	client.Disconnect(ctx)
 	close(databaseDisconnected)
 }
 
