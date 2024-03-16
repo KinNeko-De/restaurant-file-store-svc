@@ -6,11 +6,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/kinneko-de/restaurant-file-store-svc/test/testing/mongodb"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConnectToDatabase_ConfigIsComplete(t *testing.T) {
-	t.Setenv(MongoDBUriEnv, "mongodb://rootuser:rootpassword@mongodb:27017")
+	t.Setenv(MongoDBUriEnv, mongodb.MongoDbServer)
 	t.Setenv(MongoDbDatabaseNameEnv, "testdatabase")
 
 	databaseConnected := make(chan struct{})
@@ -19,5 +20,5 @@ func TestConnectToDatabase_ConfigIsComplete(t *testing.T) {
 	err := connectToDatabase(context.Background(), databaseConnected, databaseStopped)
 
 	assert.NoError(t, err)
-	// TODO assert that the database is connected
+	// assert the database is connected is ensured over the ping of the client
 }
