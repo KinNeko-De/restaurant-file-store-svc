@@ -20,7 +20,7 @@ func InitializeDatabase(ctx context.Context, databaseConnected chan struct{}, da
 		os.Exit(51)
 	}
 
-	file.FileMetadataRepositoryInstance = fileMetadataRepository
+	injectFileMetadaRepository(fileMetadataRepository)
 }
 
 func injectFileMetadaRepository(fileMetadataRepository file.FileMetadataRepository) {
