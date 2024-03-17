@@ -15,8 +15,6 @@ func ConnectToPersistentVolume(ctx context.Context, storageConnected chan struct
 
 	go PersistentVolumeListenToGracefulShutdown(storageDisconnected)
 
-	close(storageConnected)
-
 	return &PersistentVolumeFileRepository{}, nil
 }
 
