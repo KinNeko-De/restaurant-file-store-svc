@@ -17,12 +17,13 @@ type GoogleCloudStorageFileRepository struct {
 }
 
 func ConnectToGoogleCloudStorage(ctx context.Context, storageConnected chan struct{}, storageDisconnected chan struct{}, config GoogleCloundStorageConfig) (*GoogleCloudStorageFileRepository, error) {
-	var client *storage.Client
-	go storageClientlistenToGracefulShutdown(client, storageDisconnected)
 	client, err := storage.NewGRPCClient(ctx)
 	if err != nil {
+		close(storageDisconnected)
 		return &GoogleCloudStorageFileRepository{}, err
 	}
+	go storageClientlistenToGracefulShutdown(client, storageDisconnected)
+
 	close(storageConnected)
 
 	return &GoogleCloudStorageFileRepository{
@@ -33,9 +34,7 @@ func ConnectToGoogleCloudStorage(ctx context.Context, storageConnected chan stru
 func storageClientlistenToGracefulShutdown(client *storage.Client, storageDisconnected chan struct{}) {
 	gracefulShutdown := shutdown.CreateGracefulStop()
 	<-gracefulShutdown
-	if client != nil {
-		client.Close()
-	}
+	client.Close()
 
 	close(storageDisconnected)
 }
