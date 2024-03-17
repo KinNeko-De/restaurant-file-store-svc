@@ -9,13 +9,40 @@ import (
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/persistence"
 )
 
+type Storage int
+
+const (
+	Unspecified Storage = iota
+	PersistentVolume
+	StorageGoogleCloud
+)
+
 func InitializeStorage(ctx context.Context, storageConnected chan struct{}, storageDisconnected chan struct{}) {
-	fileRepository, err := connectToGoogleCloundStorage(ctx, storageConnected, storageDisconnected)
+	storage := Unspecified
+
+	var fileRepository file.FileRepository
+	var err error
+	switch storage {
+	case Unspecified, PersistentVolume:
+		fileRepository, err = connectToPersistentVolume(ctx, storageConnected, storageDisconnected)
+	case StorageGoogleCloud:
+		fileRepository, err = connectToGoogleCloundStorage(ctx, storageConnected, storageDisconnected)
+	}
+
+	if storage == StorageGoogleCloud {
+		fileRepository, err = connectToGoogleCloundStorage(ctx, storageConnected, storageDisconnected)
+	}
 	if err != nil {
 		logger.Logger.Error().Err(err).Msg("failed to connect to storage")
 		os.Exit(52)
 	}
 	injectFileRepository(fileRepository)
+}
+
+func connectToPersistentVolume(ctx context.Context, storageConnected chan struct{}, storageDisconnected chan struct{}) (file.FileRepository, error) {
+	config := persistence.PersistentVolumeConfig{} // TODO load path
+	repository, err := persistence.ConnectToPersistentVolume(ctx, storageConnected, storageDisconnected, config)
+	return repository, err
 }
 
 func connectToGoogleCloundStorage(ctx context.Context, storageConnected chan struct{}, storageDisconnected chan struct{}) (file.FileRepository, error) {
