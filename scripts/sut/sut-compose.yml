@@ -25,6 +25,7 @@ services:
       "STORAGE_PERSISTENT_VOLUME_PATH": "storage"
     volumes:
       - ./log/:/app/log/
+      - ./storage/:/app/storage/
   otel-collector:
     image: otel/opentelemetry-collector-contrib
     networks:
