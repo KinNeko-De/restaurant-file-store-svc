@@ -7,6 +7,7 @@ import (
 )
 
 type PersistentVolumeConfig struct {
+	Path string
 }
 
 func ConnectToPersistentVolume(ctx context.Context, storageConnected chan struct{}, storageDisconnected chan struct{}, config PersistentVolumeConfig) (*PersistentVolumeFileRepository, error) {
