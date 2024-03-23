@@ -13,19 +13,42 @@ type PersistentVolumeConfig struct {
 }
 
 func ConnectToPersistentVolume(ctx context.Context, storageConnected chan struct{}, storageDisconnected chan struct{}, config PersistentVolumeConfig) (*PersistentVolumeFileRepository, error) {
-	configTestFilePath := path.Join(config.Path, ".testpath")
-	file, err := os.Create(configTestFilePath)
-	if err != nil {
-		return nil, err
+	directoryErr := EnsurePathExists(config)
+	if directoryErr != nil {
+		return nil, directoryErr
 	}
-	file.Close()
-	os.Remove(configTestFilePath)
+
+	fileErr := EnsureDirectoryIsWritable(config)
+	if fileErr != nil {
+		return nil, fileErr
+	}
 
 	close(storageConnected)
 
 	go PersistentVolumeListenToGracefulShutdown(storageDisconnected)
 
 	return &PersistentVolumeFileRepository{}, nil
+}
+
+func EnsureDirectoryIsWritable(config PersistentVolumeConfig) error {
+	configTestFilePath := path.Join(config.Path, ".testpath")
+	file, err := os.Create(configTestFilePath)
+	if err != nil {
+		return err
+	}
+	file.Close()
+	os.Remove(configTestFilePath)
+	return nil
+}
+
+func EnsurePathExists(config PersistentVolumeConfig) error {
+	if _, err := os.Stat(config.Path); os.IsNotExist(err) {
+		directoryErr := os.MkdirAll(config.Path, os.ModePerm)
+		if directoryErr != nil {
+			return directoryErr
+		}
+	}
+	return nil
 }
 
 func PersistentVolumeListenToGracefulShutdown(storageDisconnected chan struct{}) {
