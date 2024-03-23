@@ -7,7 +7,7 @@ docker-compose -f sut/sut-compose.yml up -d --build --remove-orphans
 
 docker-compose -f sut/sut-compose.yml exec restaurant-file-store-svc bash
 
-docker compose -f sut/sut-compose.yml down
+docker compose -f sut/sut-compose.yml down --volumes
 
 docker image rm restaurant-file-store-svc
 

@@ -20,9 +20,13 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: rootpassword
     volumes:
       - mongodb-db:/data/db
+      - mongodb-configdb:/data/configdb
 volumes:
   mongodb-db:
-    name: restaurant-file-store-db
+    name: restaurant-file-store-db-pv-datadb
+    external: false
+  mongodb-configdb:
+    name: restaurant-file-store-db-pv-dataconfigdb
     external: false
 networks:
   project-network:

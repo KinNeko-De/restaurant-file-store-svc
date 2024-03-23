@@ -37,10 +37,13 @@ services:
       - 4317:4317 # OTLP gRPC receiver
 volumes:
   mongodb-db:
-    name: restaurant-file-store-db
+    name: restaurant-file-store-db-pv-datadb
+    external: false
+  mongodb-configdb:
+    name: restaurant-file-store-db-pv-dataconfigdb
     external: false
   storage-pv:
-    name: restaurant-file-store-pv
+    name: restaurant-file-store-storage-svc-pv-storage
     external: false
 networks:
   project-network:
