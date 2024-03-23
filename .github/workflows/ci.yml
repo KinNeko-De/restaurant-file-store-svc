@@ -27,7 +27,6 @@ jobs:
           go-version: '^1.21.1'
       - name: "Installed go version"
         run: go version
-      - uses: actions/checkout@v4
       - name: Version suffix
         id: version_suffix
         run: |
@@ -91,6 +90,7 @@ jobs:
         run: |
           go test ./... -race -coverpkg=all -coverprofile=component_coverage.out -timeout=5m --tags=component
       - name: Show system under test logs
+        if: always()
         run: docker compose -f scripts/sut/sut-compose.yml logs
       - name: Stop system under test
         if: always()
