@@ -3,11 +3,11 @@ docker network create restaurant
 
 call file-store-svc-build.cmd
 
-docker compose -f sut/sut-compose.yml build
+docker-compose -f sut/sut-compose.yml up -d --build --remove-orphans
 
-docker run -t -i --name restaurant-file-store-svc restaurant-file-store-svc bash
+docker-compose -f sut/sut-compose.yml exec restaurant-file-store-svc bash
 
-docker rm restaurant-file-store-svc
+docker compose -f sut/sut-compose.yml down
 
 docker image rm restaurant-file-store-svc
 
