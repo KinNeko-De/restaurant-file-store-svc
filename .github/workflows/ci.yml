@@ -94,7 +94,7 @@ jobs:
         run: docker compose -f scripts/sut/sut-compose.yml logs
       - name: Stop system under test
         if: always()
-        run: docker compose -f scripts/sut/sut-compose.yml down
+        run: docker compose -f scripts/sut/sut-compose.yml down --volumes
       - name: "Exclude codecoverage and combine coverage files" # known bug that files parameter is ignored https://github.com/codecov/codecov-action/issues/1285 so unfiltered files must be overriden
         run: |
           grep -v -E -f .covignore unit_coverage.out > unit_coverage.filtered.out
