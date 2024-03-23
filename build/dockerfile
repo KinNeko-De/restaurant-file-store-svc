@@ -6,10 +6,10 @@ EXPOSE 8080
 
 ARG USER_UID=1001
 RUN useradd -u ${USER_UID} appuser
-USER ${USER_UID}
 
 WORKDIR /app
 
 COPY ./bin/app .
 
+USER ${USER_UID}
 CMD ["/app/app"]
