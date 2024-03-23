@@ -5,7 +5,7 @@ on:
       - 'documentation/**'
 
 env:
-  MAJOR_MINOR_PATCH: 0.0.15
+  MAJOR_MINOR_PATCH: 0.0.16
   GIN_MODE: release
   MAIN_PACKAGE: 'cmd/file-store-svc/main.go'
 
