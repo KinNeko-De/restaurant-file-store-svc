@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"context"
+	"os"
+	"path"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server/shutdown"
 )
@@ -11,7 +13,14 @@ type PersistentVolumeConfig struct {
 }
 
 func ConnectToPersistentVolume(ctx context.Context, storageConnected chan struct{}, storageDisconnected chan struct{}, config PersistentVolumeConfig) (*PersistentVolumeFileRepository, error) {
-	// TODO add check if path exists and is accessible
+	configTestFilePath := path.Join(config.Path, ".testpath")
+	file, err := os.Create(configTestFilePath)
+	if err != nil {
+		return nil, err
+	}
+	file.Close()
+	os.Remove(configTestFilePath)
+
 	close(storageConnected)
 
 	go PersistentVolumeListenToGracefulShutdown(storageDisconnected)

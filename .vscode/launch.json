@@ -15,7 +15,7 @@
           "MONGODB_URI": "mongodb://rootuser:rootpassword@localhost:27017",
           "MONGODB_DATABASE": "restaurant-file-store-db",
           "STORAGE_TYPE": "1",
-          "STORAGE_PERSISTENT_VOLUME_PATH": "/storage",
+          "STORAGE_PERSISTENT_VOLUME_PATH": "storage",
         }
     },
   ]
