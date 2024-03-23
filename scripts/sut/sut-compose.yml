@@ -21,6 +21,8 @@ services:
       "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "otel-collector:4317"
       "MONGODB_URI": "mongodb://rootuser:rootpassword@mongodb:27017"
       "MONGODB_DATABASE": "restaurant-file-store-db"
+      "STORAGE_TYPE": "1"
+      "STORAGE_PERSISTENT_VOLUME_PATH": "storage"
     volumes:
       - ./log/:/app/log/
   otel-collector:
