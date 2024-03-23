@@ -11,5 +11,4 @@ WORKDIR /app
 
 COPY ./bin/app .
 
-USER ${USER_UID}
 CMD ["/app/app"]
