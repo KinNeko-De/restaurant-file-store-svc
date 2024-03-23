@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 
@@ -13,14 +14,14 @@ type PersistentVolumeConfig struct {
 }
 
 func ConnectToPersistentVolume(ctx context.Context, storageConnected chan struct{}, storageDisconnected chan struct{}, config PersistentVolumeConfig) (*PersistentVolumeFileRepository, error) {
-	directoryErr := EnsurePathExists(config)
-	if directoryErr != nil {
-		return nil, directoryErr
+	err := EnsurePathExists(config)
+	if err != nil {
+		return nil, err
 	}
 
-	fileErr := EnsureDirectoryIsWritable(config)
-	if fileErr != nil {
-		return nil, fileErr
+	permissingErr := EnsureDirectoryIsWritable(config)
+	if permissingErr != nil {
+		return nil, permissingErr
 	}
 
 	close(storageConnected)
@@ -28,6 +29,13 @@ func ConnectToPersistentVolume(ctx context.Context, storageConnected chan struct
 	go PersistentVolumeListenToGracefulShutdown(storageDisconnected)
 
 	return &PersistentVolumeFileRepository{}, nil
+}
+
+func EnsurePathExists(config PersistentVolumeConfig) error {
+	if _, err := os.Stat(config.Path); os.IsNotExist(err) {
+		return fmt.Errorf("path '%v for persistent volume was not found. Please check the configuration of the mounted volume. Inner errrr: %w", config.Path, err)
+	}
+	return nil
 }
 
 func EnsureDirectoryIsWritable(config PersistentVolumeConfig) error {
@@ -38,16 +46,6 @@ func EnsureDirectoryIsWritable(config PersistentVolumeConfig) error {
 	}
 	file.Close()
 	os.Remove(configTestFilePath)
-	return nil
-}
-
-func EnsurePathExists(config PersistentVolumeConfig) error {
-	if _, err := os.Stat(config.Path); os.IsNotExist(err) {
-		directoryErr := os.MkdirAll(config.Path, os.ModePerm)
-		if directoryErr != nil {
-			return directoryErr
-		}
-	}
 	return nil
 }
 

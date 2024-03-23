@@ -23,6 +23,8 @@ services:
       "MONGODB_DATABASE": "restaurant-file-store-db"
       "STORAGE_TYPE": "1"
       "STORAGE_PERSISTENT_VOLUME_PATH": "storage"
+    volumes:
+      - storage-pv:/app/storage/
   otel-collector:
     image: otel/opentelemetry-collector-contrib
     networks:
@@ -33,6 +35,10 @@ services:
     ports:
       - 13133:13133 # health_check extension
       - 4317:4317 # OTLP gRPC receiver
+volumes:
+  storage-pv:
+    name: restaurant-file-store-pv
+    external: false
 networks:
   project-network:
     name: restaurant
