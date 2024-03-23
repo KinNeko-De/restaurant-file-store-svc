@@ -9,7 +9,8 @@ RUN useradd -u ${USER_UID} appuser
 USER ${USER_UID}
 
 WORKDIR /app
-
 COPY ./bin/app .
+
+RUN mkdir -p storage # workaround needed to give the non root user access to the mapped volume
 
 CMD ["/app/app"]
