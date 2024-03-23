@@ -43,7 +43,7 @@ volumes:
     name: restaurant-file-store-db-pv-dataconfigdb
     external: false
   storage-pv:
-    name: restaurant-file-store-storage-svc-pv-storage
+    name: restaurant-file-store-svc-pv-storage
     external: false
 networks:
   project-network:
