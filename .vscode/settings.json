@@ -1,3 +1,3 @@
 {
-  "go.buildTags": "accceptance,component,unit"
+  "go.buildTags": "acceptance,component,unit"
 }
