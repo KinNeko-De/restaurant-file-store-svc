@@ -1,0 +1,58 @@
+//go:build acceptance
+
+package filestore
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/google/uuid"
+	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
+	fixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/file"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+)
+
+func TestStoreFile(t *testing.T) {
+	fileName := "test.txt"
+	sentFile := fixture.TextFile()
+	chunks := fixture.SplitIntoChunks(sentFile, 256)
+
+	conn, dialErr := grpc.Dial("localhost:3110", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.Nil(t, dialErr)
+	defer conn.Close()
+
+	client := apiRestaurantFile.NewFileServiceClient(conn)
+	ctx := context.Background()
+	stream, err := client.StoreFile(ctx)
+	require.Nil(t, err)
+
+	var metadata = &apiRestaurantFile.StoreFileRequest{
+		File: &apiRestaurantFile.StoreFileRequest_Name{
+			Name: fileName,
+		},
+	}
+	stream.Send(metadata)
+
+	for _, chunk := range chunks {
+		var chunkRequest = &apiRestaurantFile.StoreFileRequest{
+			File: &apiRestaurantFile.StoreFileRequest_Chunk{
+				Chunk: chunk,
+			},
+		}
+		stream.Send(chunkRequest)
+	}
+
+	actualResponse, err := stream.CloseAndRecv()
+	require.Nil(t, err)
+	assert.NotNil(t, actualResponse)
+
+	assert.NotNil(t, actualResponse.StoredFile)
+	assert.NotNil(t, actualResponse.StoredFile.Id)
+	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.Id)
+	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
+	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.RevisionId)
+}
