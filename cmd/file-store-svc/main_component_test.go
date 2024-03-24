@@ -1,6 +1,6 @@
 //go:build component
 
-package filestore
+package main
 
 import (
 	"context"

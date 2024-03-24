@@ -1,6 +1,6 @@
 //go:build acceptance
 
-package filestore
+package main
 
 import (
 	"context"
