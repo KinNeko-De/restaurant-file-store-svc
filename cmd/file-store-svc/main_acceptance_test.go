@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,10 +18,13 @@ import (
 )
 
 func TestStoreFile(t *testing.T) {
+
 	fileName := "test.txt"
 	sentFile := fixture.TextFile()
 	chunks := fixture.SplitIntoChunks(sentFile, 256)
+	startTime := time.Now()
 
+	// local port : 42985
 	conn, dialErr := grpc.Dial("localhost:3110", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.Nil(t, dialErr)
 	defer conn.Close()
@@ -48,6 +52,9 @@ func TestStoreFile(t *testing.T) {
 
 	actualResponse, err := stream.CloseAndRecv()
 	require.Nil(t, err)
+	duration := time.Since(startTime)
+	t.Logf("Call duration: %s", duration)
+
 	assert.NotNil(t, actualResponse)
 
 	assert.NotNil(t, actualResponse.StoredFile)
