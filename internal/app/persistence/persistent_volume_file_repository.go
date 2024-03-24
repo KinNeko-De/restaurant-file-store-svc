@@ -15,7 +15,7 @@ type PersistentVolumeFileRepository struct {
 func (g *PersistentVolumeFileRepository) CreateFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID, chunkSize int) (io.WriteCloser, error) {
 	pathName := fileId.String()
 	pathAndFile := path.Join(pathName, revisionId.String())
-	err := os.MkdirAll(pathAndFile, os.ModePerm)
+	err := os.MkdirAll(pathName, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
