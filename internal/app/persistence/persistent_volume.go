@@ -28,7 +28,7 @@ func ConnectToPersistentVolume(ctx context.Context, storageConnected chan struct
 
 	go PersistentVolumeListenToGracefulShutdown(storageDisconnected)
 
-	return &PersistentVolumeFileRepository{}, nil
+	return &PersistentVolumeFileRepository{StoragePath: config.Path}, nil
 }
 
 func EnsurePathExists(config PersistentVolumeConfig) error {
