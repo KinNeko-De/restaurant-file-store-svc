@@ -12,6 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCreateFileRepository_StorageType_InvalidValue(t *testing.T) {
+	t.Setenv(StorageTypeEnv, "IMustBeAnInteger")
+	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "IMustBeAnInteger")
+}
+
 func TestCreateFileRepository_ConfigMissing_StorageTypeEnv(t *testing.T) {
 	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
 
