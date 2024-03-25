@@ -26,7 +26,7 @@ func InitializeStorage(ctx context.Context, storageConnected chan struct{}, stor
 	fileRepository, err := createFileRepository(ctx, storageConnected, storageDisconnected)
 	if err != nil {
 		logger.Logger.Error().Err(err).Msg("failed to connect to storage")
-		os.Exit(52)
+		os.Exit(55)
 	}
 	injectFileRepository(fileRepository)
 }
@@ -67,7 +67,7 @@ func connectToGoogleCloundStorage(ctx context.Context, storageConnected chan str
 func loadStorageTypConfig() (Storage, error) {
 	storageConfig, found := os.LookupEnv(StorageTypeEnv)
 	if !found {
-		return Unspecified, nil
+		return Unspecified, fmt.Errorf("storage type is not configured. Expected environment variable %v", StorageTypeEnv)
 	}
 	storage, convertErr := strconv.Atoi(storageConfig)
 	if convertErr != nil {

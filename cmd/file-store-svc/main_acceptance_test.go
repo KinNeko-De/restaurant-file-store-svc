@@ -18,6 +18,7 @@ import (
 )
 
 func TestStoreFile(t *testing.T) {
+	// TODO Extend test to also download the file
 
 	fileName := "test.txt"
 	sentFile := fixture.TextFile()
