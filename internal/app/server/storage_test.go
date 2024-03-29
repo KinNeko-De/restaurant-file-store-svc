@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,8 +45,11 @@ func TestCreateFileRepository_PersistentVolume_ConfiguredPathDoesNotExists(t *te
 	assert.Contains(t, err.Error(), "for persistent volume was not found. Please check the configuration of the mounted volume")
 }
 
-// Does not work on windows
 func TestCreateFileRepository_PersistentVolume_ConfiguredPathIsNotAccessable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support chmod on directories")
+	}
+
 	os.Mkdir("../../../test/testing/persistentvolume/readonly", 0000)
 	defer os.RemoveAll("../../../test/testing/persistentvolume/readonly")
 
