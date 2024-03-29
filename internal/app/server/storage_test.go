@@ -53,14 +53,14 @@ func TestCreateFileRepository_PersistentVolume_ConfiguredPathIsNotAccessable(t *
 	pathToNotAccessableDirectory := t.TempDir() + "/readonly"
 
 	os.Mkdir(pathToNotAccessableDirectory, 0000)
-	defer os.RemoveAll(pathToNotAccessableDirectory)
 
 	t.Setenv(StorageTypeEnv, "1")
 	t.Setenv(PersistentVolumePathEnv, pathToNotAccessableDirectory)
 	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "for persistent volume was not found. Please check the configuration of the mounted volume")
+	assert.Contains(t, err.Error(), "permission denied")
+	assert.Contains(t, err.Error(), pathToNotAccessableDirectory)
 }
 
 func TestCreateFileRepository_PersistentVolume_ConfiguredPathIsAccessable(t *testing.T) {
