@@ -53,3 +53,18 @@ func TestInitializeDatabase_AnyError_AppCrash(t *testing.T) {
 	exitCode := err.(*exec.ExitError).ExitCode()
 	assert.Equal(t, 51, exitCode)
 }
+
+func TestConnectToDatabase_ConfigIsComplete_PingToDatabaseFailedBecauseItIsNotStarted(t *testing.T) {
+	t.Setenv(MongoDBUriEnv, "mongodb://ihavenoaccess:iamalittlehack@localhost:666")
+	t.Setenv(MongoDbDatabaseNameEnv, "notexisting")
+	t.Setenv(MongoDbTimeoutEnv, "100ms")
+
+	databaseConnected := make(chan struct{})
+	databaseStopped := make(chan struct{})
+
+	_, err := connectToMongoDB(context.Background(), databaseConnected, databaseStopped)
+	// assert the database is connected is ensured over the ping of the client
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "server selection error: context deadline exceeded")
+}
