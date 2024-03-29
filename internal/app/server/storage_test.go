@@ -50,11 +50,13 @@ func TestCreateFileRepository_PersistentVolume_ConfiguredPathIsNotAccessable(t *
 		t.Skip("Windows does not support chmod on directories")
 	}
 
-	os.Mkdir("../../../test/testing/persistentvolume/readonly", 0000)
-	defer os.RemoveAll("../../../test/testing/persistentvolume/readonly")
+	pathToNotAccessableDirectory := t.TempDir() + "/readonly"
+
+	os.Mkdir(pathToNotAccessableDirectory, 0000)
+	defer os.RemoveAll(pathToNotAccessableDirectory)
 
 	t.Setenv(StorageTypeEnv, "1")
-	t.Setenv(PersistentVolumePathEnv, "../../../test/testing/persistentvolume/readonly")
+	t.Setenv(PersistentVolumePathEnv, pathToNotAccessableDirectory)
 	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
 
 	require.Error(t, err)
@@ -62,8 +64,11 @@ func TestCreateFileRepository_PersistentVolume_ConfiguredPathIsNotAccessable(t *
 }
 
 func TestCreateFileRepository_PersistentVolume_ConfiguredPathIsAccessable(t *testing.T) {
+	pathToAccessableDirectory := t.TempDir() + "/accessable"
+	os.Mkdir(pathToAccessableDirectory, 0777)
+
 	t.Setenv(StorageTypeEnv, "1")
-	t.Setenv(PersistentVolumePathEnv, "../../../test/testing/persistentvolume/accessable")
+	t.Setenv(PersistentVolumePathEnv, pathToAccessableDirectory)
 	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
 
 	assert.Nil(t, err)
