@@ -35,12 +35,20 @@ func TestCreateFileRepository_PersistenceVolume_ConfigMissing_Path(t *testing.T)
 	assert.Contains(t, err.Error(), PersistentVolumePathEnv)
 }
 
-func TestCreateFileRepository_GoogleStorage_ConfigMissing_Path_ButIsNotNeeded(t *testing.T) {
+func TestCreateFileRepository_GoogleStorage_ConfigMissing(t *testing.T) {
 	t.Setenv(StorageTypeEnv, "2")
-	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "/path/to/your-project-credentials.json")
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "i-am-not-there-credentials.json")
 	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
 
 	assert.NotNil(t, err)
+}
+
+func TestCreateFileRepository_GoogleStorage_DummyConfig(t *testing.T) {
+	t.Setenv(StorageTypeEnv, "2")
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "../../../test/testing/googlecloud/dummycredentials.json")
+	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
+
+	assert.Nil(t, err)
 }
 
 func TestInitializeStorage_AnyError_AppCrash(t *testing.T) {
