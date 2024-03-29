@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/google/uuid"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server/shutdown"
 )
 
@@ -39,7 +40,8 @@ func EnsurePathExists(config PersistentVolumeConfig) error {
 }
 
 func EnsureDirectoryIsWritable(config PersistentVolumeConfig) error {
-	configTestFilePath := path.Join(config.Path, ".testpath")
+	randomFileName := uuid.New().String()
+	configTestFilePath := path.Join(config.Path, "."+randomFileName+"testpath")
 	file, err := os.Create(configTestFilePath)
 	if err != nil {
 		return err
