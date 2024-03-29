@@ -27,7 +27,7 @@ func TestCreateFileRepository_ConfigMissing_StorageTypeEnv(t *testing.T) {
 	assert.Contains(t, err.Error(), StorageTypeEnv)
 }
 
-func TestCreateFileRepository_PersistenceVolume_ConfigMissing_Path(t *testing.T) {
+func TestCreateFileRepository_PersistentVolume_ConfigMissing_Path(t *testing.T) {
 	t.Setenv(StorageTypeEnv, "1")
 	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
 
@@ -35,9 +35,22 @@ func TestCreateFileRepository_PersistenceVolume_ConfigMissing_Path(t *testing.T)
 	assert.Contains(t, err.Error(), PersistentVolumePathEnv)
 }
 
-func TestCreateFileRepository_PersistenceVolume_ConfiguredPathDoesNotExists(t *testing.T) {
+func TestCreateFileRepository_PersistentVolume_ConfiguredPathDoesNotExists(t *testing.T) {
 	t.Setenv(StorageTypeEnv, "1")
 	t.Setenv(PersistentVolumePathEnv, "i-am-not-there-path")
+	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "for persistent volume was not found. Please check the configuration of the mounted volume")
+}
+
+// Does not work on windows
+func TestCreateFileRepository_PersistentVolume_ConfiguredPathIsNotAccessable(t *testing.T) {
+	os.Mkdir("../../../test/testing/persistentvolume/readonly", 0000)
+	defer os.RemoveAll("../../../test/testing/persistentvolume/readonly")
+
+	t.Setenv(StorageTypeEnv, "1")
+	t.Setenv(PersistentVolumePathEnv, "../../../test/testing/persistentvolume/readonly")
 	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
 
 	require.Error(t, err)
