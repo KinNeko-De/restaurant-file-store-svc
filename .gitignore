@@ -29,4 +29,4 @@ bin/**
 tools/mockery/windows_x86_64*
 
 # local upload test files
-cmd/file-store-svc/storage/**
+cmd/file-store-svc/storage/*/
