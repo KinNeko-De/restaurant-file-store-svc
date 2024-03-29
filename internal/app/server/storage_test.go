@@ -37,12 +37,16 @@ func TestCreateFileRepository_PersistentVolume_ConfigMissing_Path(t *testing.T) 
 }
 
 func TestCreateFileRepository_PersistentVolume_ConfiguredPathDoesNotExists(t *testing.T) {
+	pathToNotExistigDirectory := t.TempDir() + "/iamnotthere"
+
 	t.Setenv(StorageTypeEnv, "1")
-	t.Setenv(PersistentVolumePathEnv, "i-am-not-there-path")
+	t.Setenv(PersistentVolumePathEnv, pathToNotExistigDirectory)
 	_, err := createFileRepository(context.Background(), make(chan struct{}), make(chan struct{}))
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "for persistent volume was not found. Please check the configuration of the mounted volume")
+	assert.Contains(t, err.Error(), pathToNotExistigDirectory)
+
 }
 
 func TestCreateFileRepository_PersistentVolume_ConfiguredPathIsNotAccessable(t *testing.T) {
