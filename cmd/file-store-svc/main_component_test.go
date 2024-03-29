@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"runtime"
 	"syscall"
 	"testing"
 	"time"
@@ -33,13 +34,16 @@ func TestMain_MetricConfigIsMissing(t *testing.T) {
 	assert.Equal(t, 40, exitCode)
 }
 
-// test does not run on windows
 // In case you broke something, the test will run forever
 // In the pipeline you will see:
 // panic: test timed out after 5m0s
 // running tests:
 // TestMain_ApplicationListenToInterrupt_GracefullShutdown (5m0s)
 func TestMain_ApplicationListenToSIGTERM_AndGracefullyShutdown(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support SIGTERM")
+	}
+
 	if os.Getenv("EXECUTE") == "1" {
 		main()
 		return
