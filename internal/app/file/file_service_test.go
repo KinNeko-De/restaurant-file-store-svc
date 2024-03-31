@@ -5,6 +5,7 @@ package file
 import (
 	context "context"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/google/uuid"
@@ -164,7 +165,7 @@ func TestStoreFile_CommunicationError_MetadataRequest_RetryIsRequested(t *testin
 	assert.Nil(t, storedFileMetadata)
 }
 
-func TestStoreFile_CommunicationError_ChunkcRequest_RetryIsRequested(t *testing.T) {
+func TestStoreFile_CommunicationError_ChunckRequest_RetryIsRequested(t *testing.T) {
 	mockStream := fixture.CreateFileStream(t)
 	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataRequest(t, "test.txt"), nil).Times(1)
 	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
@@ -185,6 +186,34 @@ func TestStoreFile_CommunicationError_ChunkcRequest_RetryIsRequested(t *testing.
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
 	assert.Nil(t, storedFileMetadata)
+}
+
+func TestStoreFile_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T) {
+	file := fixture.TextFile()
+
+	mockStream := fixture.CreateFileStream(t)
+	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataRequest(t, "test.txt"), nil).Times(1)
+	mockStream.EXPECT().Recv().Return(fixture.CreateChunkRequest(t, file), nil).Times(1)
+	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
+	mockStream.EXPECT().SendAndClose(mock.Anything).Return(errors.New("ups..someting went wrong")).Times(1)
+	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{file})
+	var generatedFileId *uuid.UUID
+	var generatedRevisionId *uuid.UUID
+	var storedFileMetadata *FileMetadata
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreFile(mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	assert.True(t, ok, "Expected a gRPC status error")
+
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), "retry")
+	assert.Contains(t, actualStatus.Message(), "response")
+	assert.NotNil(t, storedFileMetadata) // TODO: Decide how to clean up this, maybe add metrics to track this
 }
 
 func TestStoreFile_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testing.T) {
