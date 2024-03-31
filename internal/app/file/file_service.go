@@ -66,13 +66,19 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 func writeFile(stream apiRestaurantFile.FileService_StoreFileServer, fileId uuid.UUID, revisionId uuid.UUID) (uint64, []byte, error) {
 	fileWriter, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, revisionId, 0)
 	if err != nil {
-		logger.Logger.Err(err).Msg("ferror while creating file")
-		return 0, nil, status.Error(codes.Internal, "failed to write file. please retry the request")
+		logger.Logger.Err(err).Msg("failed to create file")
+		return 0, nil, status.Error(codes.Internal, "failed to create file. please retry the request")
 	}
-	defer fileWriter.Close()
+
 	totalFileSize, sniff, err := receiveChunks(stream, fileWriter)
 	if err != nil {
 		return 0, nil, err
+	}
+
+	closeErr := fileWriter.Close()
+	if closeErr != nil {
+		logger.Logger.Err(closeErr).Msg("failed to close file")
+		return 0, nil, status.Error(codes.Internal, "failed to close file. please retry the request")
 	}
 
 	return totalFileSize, sniff, nil
@@ -101,7 +107,7 @@ func receiveChunks(stream apiRestaurantFile.FileService_StoreFileServer, f io.Wr
 		_, err = f.Write(chunkMessage.Chunk)
 		if err != nil {
 			logger.Logger.Err(err).Msg("failed to write chunk to file")
-			return 0, nil, status.Error(codes.Internal, "failed to write chunk to file. please retry the request")
+			return 0, nil, status.Error(codes.Internal, "failed to write file. please retry the request")
 		}
 	}
 

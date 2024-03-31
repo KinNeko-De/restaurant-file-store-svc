@@ -40,8 +40,8 @@ func CreateValidFileStream(t *testing.T, fileName string, fileChunks [][]byte) *
 	mockStream := CreateFileStream(t)
 
 	metadata := CreateMetadataRequest(t, fileName)
-
 	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
+
 	for _, chunk := range fileChunks {
 		chunkRequest := CreateChunkRequest(t, chunk)
 		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
@@ -52,7 +52,21 @@ func CreateValidFileStream(t *testing.T, fileName string, fileChunks [][]byte) *
 	return mockStream
 }
 
-func SetupSuccessfulResponse(t *testing.T, mockStream *FileService_StoreFileServer, actualResponse **v1.StoreFileResponse) {
+func CreateValidFileStreamThatAbortsOnFileOperation(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
+	mockStream := CreateFileStream(t)
+
+	metadata := CreateMetadataRequest(t, fileName)
+	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
+
+	for _, chunk := range successfulWritenfileChunks {
+		chunkRequest := CreateChunkRequest(t, chunk)
+		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
+	}
+
+	return mockStream
+}
+
+func SetupAndRecordSuccessfulResponse(t *testing.T, mockStream *FileService_StoreFileServer, actualResponse **v1.StoreFileResponse) {
 	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
 		*actualResponse = response
 	}).Return(nil).Times(1)
