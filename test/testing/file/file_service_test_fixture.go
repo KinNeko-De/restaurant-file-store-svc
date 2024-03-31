@@ -9,24 +9,41 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func CreateValidFileStream(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
+func CreateFileStream(t *testing.T) *FileService_StoreFileServer {
 	mockStream := NewFileService_StoreFileServer(t)
 
 	ctx := context.Background()
 	mockStream.EXPECT().Context().Return(ctx).Maybe()
 
-	var metadata = &v1.StoreFileRequest{
+	return mockStream
+}
+
+func CreateMetadataRequest(t *testing.T, fileName string) *v1.StoreFileRequest {
+	metadata := &v1.StoreFileRequest{
 		File: &v1.StoreFileRequest_Name{
 			Name: fileName,
 		},
 	}
+	return metadata
+}
+
+func CreateChunkRequest(t *testing.T, chunk []byte) *v1.StoreFileRequest {
+	chunkRequest := &v1.StoreFileRequest{
+		File: &v1.StoreFileRequest_Chunk{
+			Chunk: chunk,
+		},
+	}
+	return chunkRequest
+}
+
+func CreateValidFileStream(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
+	mockStream := CreateFileStream(t)
+
+	metadata := CreateMetadataRequest(t, fileName)
+
 	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
 	for _, chunk := range fileChunks {
-		var chunkRequest = &v1.StoreFileRequest{
-			File: &v1.StoreFileRequest_Chunk{
-				Chunk: chunk,
-			},
-		}
+		chunkRequest := CreateChunkRequest(t, chunk)
 		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
 	}
 

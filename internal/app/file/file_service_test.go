@@ -12,6 +12,8 @@ import (
 	ioFixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/io"
 	"github.com/stretchr/testify/assert"
 	mock "github.com/stretchr/testify/mock"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
@@ -137,6 +139,54 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	assert.Equal(t, expectedMediaType, storedFileMetadata.Revisions[0].MediaType)
 	assert.Equal(t, expectedFileExtension, storedFileMetadata.Revisions[0].Extension)
 	assert.NotNil(t, storedFileMetadata.Revisions[0].CreatedAt)
+}
+
+func TestStoreFile_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testing.T) {
+	mockStream := fixture.CreateFileStream(t)
+	firstRequest := fixture.CreateChunkRequest(t, fixture.TextFile())
+	mockStream.EXPECT().Recv().Return(firstRequest, nil).Times(1)
+
+	var generatedFileId *uuid.UUID
+	var generatedRevisionId *uuid.UUID
+	var storedFileMetadata *FileMetadata
+	fileWriter := ioFixture.CreateWriterCloserMock(t, [][]byte{})
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreFile(mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	assert.True(t, ok, "Expected a gRPC status error")
+
+	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+	assert.Nil(t, storedFileMetadata)
+}
+
+func TestStoreFile_InvalidRequest_MetadataIsSentTwice_FileIsRejected(t *testing.T) {
+	mockStream := fixture.CreateFileStream(t)
+	firstRequest := fixture.CreateMetadataRequest(t, "test.txt")
+	mockStream.EXPECT().Recv().Return(firstRequest, nil).Times(1)
+	secondRequest := fixture.CreateMetadataRequest(t, "test2.txt")
+	mockStream.EXPECT().Recv().Return(secondRequest, nil).Times(1)
+
+	var generatedFileId *uuid.UUID
+	var generatedRevisionId *uuid.UUID
+	var storedFileMetadata *FileMetadata
+	fileWriter := ioFixture.CreateWriterCloserMock(t, [][]byte{})
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreFile(mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	assert.True(t, ok, "Expected a gRPC status error")
+
+	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+	assert.Nil(t, storedFileMetadata)
 }
 
 func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMetadataRepository *MockFileMetadataRepository) FileServiceServer {
