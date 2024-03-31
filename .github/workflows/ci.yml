@@ -24,7 +24,7 @@ jobs:
       - name: Install go
         uses: actions/setup-go@v5
         with:
-          go-version: '^1.22'
+          go-version: '^1.22.1'
       - name: "Installed go version"
         run: go version
       - name: Version suffix
