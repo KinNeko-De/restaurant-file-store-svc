@@ -52,7 +52,7 @@ func CreateValidFileStream(t *testing.T, fileName string, fileChunks [][]byte) *
 	return mockStream
 }
 
-func CreateValidFileStreamThatAbortsOnFileOperation(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
+func CreateValidFileStreamThatAbortsOnFileWrite(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
 	mockStream := CreateFileStream(t)
 
 	metadata := CreateMetadataRequest(t, fileName)
@@ -62,6 +62,22 @@ func CreateValidFileStreamThatAbortsOnFileOperation(t *testing.T, fileName strin
 		chunkRequest := CreateChunkRequest(t, chunk)
 		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
 	}
+
+	return mockStream
+}
+
+func CreateValidFileStreamThatAbortsOnFileClose(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
+	mockStream := CreateFileStream(t)
+
+	metadata := CreateMetadataRequest(t, fileName)
+	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
+
+	for _, chunk := range successfulWritenfileChunks {
+		chunkRequest := CreateChunkRequest(t, chunk)
+		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
+	}
+
+	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
 
 	return mockStream
 }

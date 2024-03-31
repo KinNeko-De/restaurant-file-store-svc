@@ -196,7 +196,7 @@ func TestStoreFile_FileCreatingError_RetryRequested(t *testing.T) {
 	sentFileName := "test.txt"
 
 	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidFileStreamThatAbortsOnFileOperation(t, sentFileName, [][]byte{})
+	mockStream := fixture.CreateValidFileStreamThatAbortsOnFileWrite(t, sentFileName, [][]byte{})
 
 	mockFileRepository := &MockFileRepository{}
 	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New()), 0).Return(nil, err).Times(1)
@@ -222,7 +222,7 @@ func TestStoreFile_FileWritingError_RetryRequested(t *testing.T) {
 	var generatedFileId *uuid.UUID
 	var generatedRevisionId *uuid.UUID
 	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidFileStreamThatAbortsOnFileOperation(t, sentFileName, [][]byte{sentFile})
+	mockStream := fixture.CreateValidFileStreamThatAbortsOnFileWrite(t, sentFileName, [][]byte{sentFile})
 	fileWriter := ioFixture.CreateWriterCloserRanIntoWriteError(t, [][]byte{}, err)
 	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
 	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
@@ -247,7 +247,7 @@ func TestStoreFile_FileClosingError_RetryRequested(t *testing.T) {
 	var generatedFileId *uuid.UUID
 	var generatedRevisionId *uuid.UUID
 	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidFileStreamThatAbortsOnFileOperation(t, sentFileName, [][]byte{sentFile})
+	mockStream := fixture.CreateValidFileStreamThatAbortsOnFileClose(t, sentFileName, [][]byte{sentFile})
 	fileWriter := ioFixture.CreateWriterCloserRanIntoCloseError(t, [][]byte{sentFile}, err)
 	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
 	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
