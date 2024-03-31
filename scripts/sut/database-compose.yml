@@ -13,13 +13,21 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+    ports:
+      - 27017:27017
     environment:
       MONGO_INITDB_ROOT_USERNAME: rootuser
       MONGO_INITDB_ROOT_PASSWORD: rootpassword
     volumes:
-      - /data/db
-    ports:
-      - 27017:27017
+      - mongodb-db:/data/db
+      - mongodb-configdb:/data/configdb
+volumes:
+  mongodb-db:
+    name: restaurant-file-store-db-pv-datadb
+    external: false
+  mongodb-configdb:
+    name: restaurant-file-store-db-pv-dataconfigdb
+    external: false
 networks:
   project-network:
     name: restaurant

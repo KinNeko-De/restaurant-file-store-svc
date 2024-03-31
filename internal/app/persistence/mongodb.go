@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
@@ -16,6 +17,7 @@ type MongoDBConfig struct {
 	HostUri                string
 	DatabaseName           string
 	FileMetadataCollection string
+	Timeout                time.Duration
 }
 
 func ConnectToMongoDB(ctx context.Context, databaseConnected chan struct{}, databaseDisconnected chan struct{}, config MongoDBConfig) (file.FileMetadataRepository, error) {
@@ -32,7 +34,7 @@ func ConnectToMongoDB(ctx context.Context, databaseConnected chan struct{}, data
 }
 
 func initializeMongoDbFileMetadataRepository(ctx context.Context, config MongoDBConfig) (*MongoDBRepository, error) {
-	client, err := createClient(ctx, config.HostUri)
+	client, err := createClient(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -48,10 +50,10 @@ func listenToGracefulShutdown(ctx context.Context, client *mongo.Client, databas
 	close(databaseDisconnected)
 }
 
-func createClient(ctx context.Context, hostUri string) (*mongo.Client, error) {
+func createClient(ctx context.Context, config MongoDBConfig) (*mongo.Client, error) {
 	gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
-	client, err := CreateMongoDBClient(gracefulAbort, hostUri)
+	client, err := CreateMongoDBClient(gracefulAbort, config)
 	if err != nil {
 		return nil, err
 	}

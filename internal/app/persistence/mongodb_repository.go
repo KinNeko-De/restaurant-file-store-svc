@@ -66,8 +66,14 @@ type revision struct {
 	CreatedAt time.Time
 }
 
-func CreateMongoDBClient(ctx context.Context, uri string) (*mongo.Client, error) {
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+func CreateMongoDBClient(ctx context.Context, config MongoDBConfig) (*mongo.Client, error) {
+	clientOptions := options.Client().ApplyURI(config.HostUri)
+
+	if config.Timeout != 0 {
+		clientOptions = clientOptions.SetTimeout(config.Timeout)
+	}
+
+	client, err := mongo.Connect(ctx, clientOptions)
 	return client, err
 }
 

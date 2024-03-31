@@ -1,3 +1,4 @@
 {
-  "go.buildTags": "component,unit"
+  "go.buildTags": "acceptance,component,unit",
+  "task.verboseLogging": true
 }

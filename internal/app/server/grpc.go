@@ -17,6 +17,9 @@ import (
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/health"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server/shutdown"
+
+	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
+	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 )
 
 func StartGrpcServer(grpcServerStarted chan struct{}, grpcServerStopped chan struct{}) {
@@ -79,4 +82,5 @@ func configureGrpcServer() *grpc.Server {
 }
 
 func RegisterAllGrpcServices(grpcServer *grpc.Server) {
+	apiRestaurantFile.RegisterFileServiceServer(grpcServer, &file.FileServiceServer{})
 }

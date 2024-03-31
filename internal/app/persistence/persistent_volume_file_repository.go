@@ -1,0 +1,25 @@
+package persistence
+
+import (
+	"context"
+	"io"
+	"os"
+	"path"
+
+	"github.com/google/uuid"
+)
+
+type PersistentVolumeFileRepository struct {
+	StoragePath string
+}
+
+func (g *PersistentVolumeFileRepository) CreateFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID, chunkSize int) (io.WriteCloser, error) {
+	fileFolder := path.Join(g.StoragePath, fileId.String())
+	fileLocation := path.Join(fileFolder, revisionId.String())
+	err := os.MkdirAll(fileFolder, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	writer, err := os.Create(fileLocation)
+	return writer, err
+}

@@ -14,4 +14,6 @@ func SetAllNeceassaryEnvironemntVariables(t *testing.T) {
 	t.Setenv(server.ServiceNameEnv, "blub")
 	t.Setenv(server.MongoDBUriEnv, mongodb.MongoDbServer)
 	t.Setenv(server.MongoDbDatabaseNameEnv, MongoDatabase)
+	t.Setenv(server.StorageTypeEnv, "1")
+	t.Setenv(server.PersistentVolumePathEnv, "storage")
 }

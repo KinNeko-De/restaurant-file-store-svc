@@ -22,12 +22,13 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	expectedFileExtension := ".txt"
 
 	var generatedFileId *uuid.UUID
+	var generatedRevisionId *uuid.UUID
 	var storedFileMetadata *FileMetadata
 	var actualResponse *v1.StoreFileResponse
 	mockStream := fixture.CreateValidFileStream(t, sentFileName, [][]byte{sentFile})
 	fixture.SetupSuccessfulResponse(t, mockStream, &actualResponse)
 	fileWriter := ioFixture.CreateWriterCloserMock(t, [][]byte{sentFile})
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
 	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
@@ -59,6 +60,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	assert.NotNil(t, storedFileMetadata.Revisions[0].CreatedAt)
 
 	assert.Equal(t, generatedFileId.String(), actualResponse.StoredFile.Id.Value)
+	assert.Equal(t, generatedRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
 }
 
 func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *testing.T) {
@@ -68,12 +70,13 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	expectedMediaType := "application/pdf"
 
 	var generatedFileId *uuid.UUID
+	var generatedRevisionId *uuid.UUID
 	var storedFileMetadata *FileMetadata
 	var actualResponse *v1.StoreFileResponse
 	mockStream := fixture.CreateValidFileStream(t, sentFileName, [][]byte{sentFile})
 	fixture.SetupSuccessfulResponse(t, mockStream, &actualResponse)
 	fileWriter := ioFixture.CreateWriterCloserMock(t, [][]byte{sentFile})
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
 	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
@@ -102,12 +105,13 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	expectedFileExtension := ".pdf"
 
 	var generatedFileId *uuid.UUID
+	var generatedRevisionId *uuid.UUID
 	var storedFileMetadata *FileMetadata
 	var actualResponse *v1.StoreFileResponse
 	mockStream := fixture.CreateValidFileStream(t, sentFileName, chunks)
 	fixture.SetupSuccessfulResponse(t, mockStream, &actualResponse)
 	fileWriter := ioFixture.CreateWriterCloserMock(t, chunks)
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId)
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
 	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
@@ -143,11 +147,14 @@ func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMet
 	return sut
 }
 
-func createFileRepositoryMock(t *testing.T, fileWriter *ioFixture.MockWriteCloser, generatedFileId **uuid.UUID) *MockFileRepository {
+func createFileRepositoryMock(t *testing.T, fileWriter *ioFixture.MockWriteCloser, generatedFileId **uuid.UUID, generatedRevisionId **uuid.UUID) *MockFileRepository {
 	t.Helper()
 	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), 0).
-		Run(func(ctx context.Context, fileId uuid.UUID, chunkSize int) { *generatedFileId = &fileId }).
+	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New()), 0).
+		Run(func(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID, chunkSize int) {
+			*generatedFileId = &fileId
+			*generatedRevisionId = &revisionId
+		}).
 		Return(fileWriter, nil).
 		Times(1)
 

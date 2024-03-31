@@ -21,18 +21,30 @@ services:
       "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "otel-collector:4317"
       "MONGODB_URI": "mongodb://rootuser:rootpassword@mongodb:27017"
       "MONGODB_DATABASE": "restaurant-file-store-db"
+      "STORAGE_TYPE": "1"
+      "STORAGE_PERSISTENT_VOLUME_PATH": "storage"
     volumes:
-      - ./log/:/app/log/
+      - storage-pv:/app/storage
   otel-collector:
     image: otel/opentelemetry-collector-contrib
     networks:
       - project-network
     container_name: otel-collector
     volumes:
-    - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+        - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
     ports:
       - 13133:13133 # health_check extension
       - 4317:4317 # OTLP gRPC receiver
+volumes:
+  mongodb-db:
+    name: restaurant-file-store-db-pv-datadb
+    external: false
+  mongodb-configdb:
+    name: restaurant-file-store-db-pv-dataconfigdb
+    external: false
+  storage-pv:
+    name: restaurant-file-store-svc-pv-storage
+    external: false
 networks:
   project-network:
     name: restaurant
