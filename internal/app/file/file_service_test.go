@@ -142,6 +142,51 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	assert.NotNil(t, storedFileMetadata.Revisions[0].CreatedAt)
 }
 
+func TestStoreFile_CommunicationError_MetadataRequest_RetryIsRequested(t *testing.T) {
+	mockStream := fixture.CreateFileStream(t)
+	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
+	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
+	var generatedFileId *uuid.UUID
+	var generatedRevisionId *uuid.UUID
+	var storedFileMetadata *FileMetadata
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreFile(mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	assert.True(t, ok, "Expected a gRPC status error")
+
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), "retry")
+	assert.Nil(t, storedFileMetadata)
+}
+
+func TestStoreFile_CommunicationError_ChunkcRequest_RetryIsRequested(t *testing.T) {
+	mockStream := fixture.CreateFileStream(t)
+	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataRequest(t, "test.txt"), nil).Times(1)
+	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
+	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
+	var generatedFileId *uuid.UUID
+	var generatedRevisionId *uuid.UUID
+	var storedFileMetadata *FileMetadata
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreFile(mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	assert.True(t, ok, "Expected a gRPC status error")
+
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), "retry")
+	assert.Nil(t, storedFileMetadata)
+}
+
 func TestStoreFile_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testing.T) {
 	mockStream := fixture.CreateFileStream(t)
 	firstRequest := fixture.CreateChunkRequest(t, fixture.TextFile())
