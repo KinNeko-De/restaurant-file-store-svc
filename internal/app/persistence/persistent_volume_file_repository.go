@@ -13,7 +13,7 @@ type PersistentVolumeFileRepository struct {
 	StoragePath string
 }
 
-func (g *PersistentVolumeFileRepository) CreateFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID, chunkSize int) (io.WriteCloser, error) {
+func (g *PersistentVolumeFileRepository) CreateFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) (io.WriteCloser, error) {
 	fileFolder := path.Join(g.StoragePath, fileId.String())
 	fileLocation := path.Join(fileFolder, revisionId.String())
 	err := os.MkdirAll(fileFolder, os.ModePerm)

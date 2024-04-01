@@ -12,12 +12,12 @@ type GoogleCloudStorageFileRepository struct {
 	Client *storage.Client
 }
 
-func (g *GoogleCloudStorageFileRepository) CreateFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID, chunkSize int) (io.WriteCloser, error) {
+func (g *GoogleCloudStorageFileRepository) CreateFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) (io.WriteCloser, error) {
 	bucket := g.Client.Bucket("kinneko-de")
 	objectname := fileId.String() + "/" + revisionId.String()
 	object := bucket.Object(objectname)
 	writer := object.NewWriter(ctx)
-	writer.ChunkSize = chunkSize
+	// TODO: chunksize must be set to slightly larger than the maximum size of the file, for that we need to know the size of the file before writing it
 	// TODO: checksum control
 	return writer, nil
 }

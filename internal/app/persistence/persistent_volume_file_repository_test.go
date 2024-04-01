@@ -24,7 +24,7 @@ func TestCreateFile(t *testing.T) {
 
 	sut := PersistentVolumeFileRepository{StoragePath: rootPath}
 
-	writer, err := sut.CreateFile(context.Background(), fileId, revisionId, 1024)
+	writer, err := sut.CreateFile(context.Background(), fileId, revisionId)
 	require.Nil(t, err)
 	assert.NotNil(t, writer)
 	writer.Write(expectedContent)

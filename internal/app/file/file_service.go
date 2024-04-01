@@ -64,7 +64,7 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 }
 
 func writeFile(stream apiRestaurantFile.FileService_StoreFileServer, fileId uuid.UUID, revisionId uuid.UUID) (uint64, []byte, error) {
-	fileWriter, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, revisionId, 0)
+	fileWriter, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, revisionId)
 	if err != nil {
 		logger.Logger.Err(err).Msg("failed to create file")
 		return 0, nil, status.Error(codes.Internal, "failed to create file. please retry the request")
