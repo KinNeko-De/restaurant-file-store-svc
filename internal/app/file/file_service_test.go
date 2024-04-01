@@ -273,7 +273,7 @@ func TestStoreFile_FileCreatingError_RetryRequested(t *testing.T) {
 	mockStream := fixture.CreateValidFileStreamThatAbortsOnFileWrite(t, sentFileName, [][]byte{})
 
 	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New()), 0).Return(nil, err).Times(1)
+	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New())).Return(nil, err).Times(1)
 	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
@@ -349,8 +349,8 @@ func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMet
 func createFileRepositoryMock(t *testing.T, fileWriter *ioFixture.MockWriteCloser, generatedFileId **uuid.UUID, generatedRevisionId **uuid.UUID) *MockFileRepository {
 	t.Helper()
 	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New()), 0).
-		Run(func(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID, chunkSize int) {
+	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New())).
+		Run(func(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) {
 			*generatedFileId = &fileId
 			*generatedRevisionId = &revisionId
 		}).

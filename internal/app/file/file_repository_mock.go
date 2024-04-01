@@ -24,9 +24,9 @@ func (_m *MockFileRepository) EXPECT() *MockFileRepository_Expecter {
 	return &MockFileRepository_Expecter{mock: &_m.Mock}
 }
 
-// CreateFile provides a mock function with given fields: ctx, fileId, revisionId, chunkSize
-func (_m *MockFileRepository) CreateFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID, chunkSize int) (io.WriteCloser, error) {
-	ret := _m.Called(ctx, fileId, revisionId, chunkSize)
+// CreateFile provides a mock function with given fields: ctx, fileId, revisionId
+func (_m *MockFileRepository) CreateFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) (io.WriteCloser, error) {
+	ret := _m.Called(ctx, fileId, revisionId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateFile")
@@ -34,19 +34,19 @@ func (_m *MockFileRepository) CreateFile(ctx context.Context, fileId uuid.UUID, 
 
 	var r0 io.WriteCloser
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, int) (io.WriteCloser, error)); ok {
-		return rf(ctx, fileId, revisionId, chunkSize)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (io.WriteCloser, error)); ok {
+		return rf(ctx, fileId, revisionId)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, int) io.WriteCloser); ok {
-		r0 = rf(ctx, fileId, revisionId, chunkSize)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) io.WriteCloser); ok {
+		r0 = rf(ctx, fileId, revisionId)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(io.WriteCloser)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, int) error); ok {
-		r1 = rf(ctx, fileId, revisionId, chunkSize)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(ctx, fileId, revisionId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -63,14 +63,13 @@ type MockFileRepository_CreateFile_Call struct {
 //   - ctx context.Context
 //   - fileId uuid.UUID
 //   - revisionId uuid.UUID
-//   - chunkSize int
-func (_e *MockFileRepository_Expecter) CreateFile(ctx interface{}, fileId interface{}, revisionId interface{}, chunkSize interface{}) *MockFileRepository_CreateFile_Call {
-	return &MockFileRepository_CreateFile_Call{Call: _e.mock.On("CreateFile", ctx, fileId, revisionId, chunkSize)}
+func (_e *MockFileRepository_Expecter) CreateFile(ctx interface{}, fileId interface{}, revisionId interface{}) *MockFileRepository_CreateFile_Call {
+	return &MockFileRepository_CreateFile_Call{Call: _e.mock.On("CreateFile", ctx, fileId, revisionId)}
 }
 
-func (_c *MockFileRepository_CreateFile_Call) Run(run func(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID, chunkSize int)) *MockFileRepository_CreateFile_Call {
+func (_c *MockFileRepository_CreateFile_Call) Run(run func(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID)) *MockFileRepository_CreateFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(uuid.UUID), args[3].(int))
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(uuid.UUID))
 	})
 	return _c
 }
@@ -80,7 +79,7 @@ func (_c *MockFileRepository_CreateFile_Call) Return(_a0 io.WriteCloser, _a1 err
 	return _c
 }
 
-func (_c *MockFileRepository_CreateFile_Call) RunAndReturn(run func(context.Context, uuid.UUID, uuid.UUID, int) (io.WriteCloser, error)) *MockFileRepository_CreateFile_Call {
+func (_c *MockFileRepository_CreateFile_Call) RunAndReturn(run func(context.Context, uuid.UUID, uuid.UUID) (io.WriteCloser, error)) *MockFileRepository_CreateFile_Call {
 	_c.Call.Return(run)
 	return _c
 }
