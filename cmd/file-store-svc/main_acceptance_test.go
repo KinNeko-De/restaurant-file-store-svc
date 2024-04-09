@@ -18,8 +18,6 @@ import (
 )
 
 func TestStoreFile(t *testing.T) {
-	// TODO Extend test to also download the file
-
 	fileName := "test.txt"
 	sentFile := fixture.TextFile()
 	chunks := fixture.SplitIntoChunks(sentFile, 256)
@@ -62,4 +60,19 @@ func TestStoreFile(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.Id)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.RevisionId)
+
+	downloadStream, downloadError := client.DownloadFile(ctx, &apiRestaurantFile.DownloadFileRequest{
+		Download: &apiRestaurantFile.DownloadFileRequest_FileId{
+			FileId: actualResponse.StoredFile.Id,
+		},
+	})
+
+	require.Nil(t, downloadError)
+	require.NotNil(t, downloadStream)
+
+	metadata2, err2 := downloadStream.Recv()
+	require.Nil(t, err2)
+	require.NotNil(t, metadata2)
+
+	// TODO assert more
 }
