@@ -177,17 +177,9 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 		return err
 	}
 
-	revisionId, err := apiProtobuf.ToUuid(request.GetRevisionId())
-	if err != nil {
-		return err
-	}
-
 	fileMetadata, err := FileMetadataRepositoryInstance.FetchFileMetadata(stream.Context(), fileId)
 
-	revision, err := fileMetadata.GetRevision(revisionId)
-	if err != nil {
-		return err
-	}
+	revision := fileMetadata.FirstRevision()
 
 	stream.Send(&apiRestaurantFile.DownloadFileResponse{
 		File: &apiRestaurantFile.DownloadFileResponse_Metadata{
@@ -200,7 +192,7 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 		},
 	})
 
-	fileReader, err := FileRepositoryInstance.ReadFile(stream.Context(), fileId, revisionId)
+	fileReader, err := FileRepositoryInstance.ReadFile(stream.Context(), fileId, revision.Id)
 	if err != nil {
 		return err
 	}
