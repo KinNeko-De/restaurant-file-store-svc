@@ -23,3 +23,9 @@ func (g *PersistentVolumeFileRepository) CreateFile(ctx context.Context, fileId 
 	writer, err := os.Create(fileLocation)
 	return writer, err
 }
+
+func (g *PersistentVolumeFileRepository) ReadFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) (io.ReadCloser, error) {
+	fileLocation := path.Join(g.StoragePath, fileId.String(), revisionId.String())
+	reader, err := os.Open(fileLocation)
+	return reader, err
+}

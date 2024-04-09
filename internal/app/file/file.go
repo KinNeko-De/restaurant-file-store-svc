@@ -1,6 +1,7 @@
 package file
 
 import (
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -21,6 +22,15 @@ func (f *FileMetadata) AddRevision(revision Revision) {
 
 func (f *FileMetadata) LatestRevision() Revision {
 	return f.Revisions[len(f.Revisions)-1]
+}
+
+func (f *FileMetadata) GetRevision(revisionId uuid.UUID) (Revision, error) {
+	for _, revision := range f.Revisions {
+		if revision.Id == revisionId {
+			return revision, nil
+		}
+	}
+	return Revision{}, fmt.Errorf("revision with UUID %s not found", revisionId)
 }
 
 func (f *FileMetadata) FirstRevision() Revision {

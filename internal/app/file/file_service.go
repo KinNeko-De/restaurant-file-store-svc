@@ -172,5 +172,59 @@ func createStoreFileResponse(createdFileMetadata *FileMetadata) (*apiRestaurantF
 }
 
 func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFileRequest, stream apiRestaurantFile.FileService_DownloadFileServer) error {
-	return status.Errorf(codes.Unimplemented, "method not implemented")
+	fileId, err := apiProtobuf.ToUuid(request.GetFileId())
+	if err != nil {
+		return err
+	}
+
+	revisionId, err := apiProtobuf.ToUuid(request.GetRevisionId())
+	if err != nil {
+		return err
+	}
+
+	fileMetadata, err := FileMetadataRepositoryInstance.FetchFileMetadata(stream.Context(), fileId)
+
+	revision, err := fileMetadata.GetRevision(revisionId)
+	if err != nil {
+		return err
+	}
+
+	stream.Send(&apiRestaurantFile.DownloadFileResponse{
+		File: &apiRestaurantFile.DownloadFileResponse_Metadata{
+			Metadata: &apiRestaurantFile.StoredFileMetadata{
+				CreatedAt: timestamppb.New(revision.CreatedAt),
+				Size:      revision.Size,
+				MediaType: revision.MediaType,
+				Extension: revision.Extension,
+			},
+		},
+	})
+
+	fileReader, err := FileRepositoryInstance.ReadFile(stream.Context(), fileId, revisionId)
+	if err != nil {
+		return err
+	}
+
+	chunk := make([]byte, 1024)
+	for {
+		n, err := fileReader.Read(chunk)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		stream.Send(&apiRestaurantFile.DownloadFileResponse{
+			File: &apiRestaurantFile.DownloadFileResponse_Chunk{
+				Chunk: chunk[:n],
+			},
+		})
+	}
+
+	err = fileReader.Close()
+	if err != nil {
+		// TODO log error and ignore
+	}
+
+	return nil
 }
