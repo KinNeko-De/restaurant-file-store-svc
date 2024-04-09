@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -30,8 +31,9 @@ func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, file
 }
 
 func (repository *MongoDBRepository) FetchFileMetadata(ctx context.Context, fileId uuid.UUID) (file.FileMetadata, error) {
+	requestedId := fileId.String()
 	var dataModel fileMetadata
-	err := repository.collection.FindOne(ctx, fileMetadata{Id: fileId.String()}).Decode(&dataModel)
+	err := repository.collection.FindOne(ctx, bson.M{"_id": requestedId}).Decode(&dataModel)
 	if err != nil {
 		return file.FileMetadata{}, fmt.Errorf("failed to fetch file metadata: %v", err)
 	}

@@ -172,12 +172,16 @@ func createStoreFileResponse(createdFileMetadata *FileMetadata) (*apiRestaurantF
 }
 
 func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFileRequest, stream apiRestaurantFile.FileService_DownloadFileServer) error {
-	fileId, err := apiProtobuf.ToUuid(request.GetFileId())
+	requested := request.GetFileId()
+	fileId, err := apiProtobuf.ToUuid(requested)
 	if err != nil {
 		return err
 	}
 
 	fileMetadata, err := FileMetadataRepositoryInstance.FetchFileMetadata(stream.Context(), fileId)
+	if err != nil {
+		return err
+	}
 
 	revision := fileMetadata.FirstRevision()
 

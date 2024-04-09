@@ -23,7 +23,7 @@ func TestStoreFile(t *testing.T) {
 	chunks := fixture.SplitIntoChunks(sentFile, 256)
 	startTime := time.Now()
 
-	conn, dialErr := grpc.Dial("localhost:42985", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, dialErr := grpc.Dial("localhost:3110", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.Nil(t, dialErr)
 	defer conn.Close()
 
