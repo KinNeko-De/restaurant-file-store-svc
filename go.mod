@@ -14,7 +14,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.24.0
 	go.opentelemetry.io/otel/sdk v1.24.0
 	go.opentelemetry.io/otel/sdk/metric v1.24.0
-	google.golang.org/grpc v1.62.1
+	google.golang.org/grpc v1.63.2
 )
 
 require (
@@ -51,8 +51,8 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
-	github.com/kinneko-de/api-contract/golang/kinnekode/protobuf v0.2.6
-	github.com/kinneko-de/api-contract/golang/kinnekode/restaurant v0.0.2-store-files.16
+	github.com/kinneko-de/api-contract/golang/kinnekode/protobuf v0.2.7
+	github.com/kinneko-de/api-contract/golang/kinnekode/restaurant v0.0.3-store-files.3
 	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
