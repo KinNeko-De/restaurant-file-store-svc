@@ -22,12 +22,12 @@ type FileServiceServer struct {
 }
 
 func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_StoreFileServer) error {
-	fileName, err := receiveMetadata(stream)
+	request, err := receiveMetadata(stream)
 	if err != nil {
 		return err
 	}
 
-	createdFileMetadata, err := createFile(stream, fileName.Name)
+	createdFileMetadata, err := createFile(stream, request.StoreFile.Name)
 	if err != nil {
 		return err
 	}
@@ -114,15 +114,15 @@ func receiveChunks(stream apiRestaurantFile.FileService_StoreFileServer, f io.Wr
 	return totalFileSize, sniff[:sniffByteCount], nil
 }
 
-func receiveMetadata(stream apiRestaurantFile.FileService_StoreFileServer) (*apiRestaurantFile.StoreFileRequest_Name, error) {
+func receiveMetadata(stream apiRestaurantFile.FileService_StoreFileServer) (*apiRestaurantFile.StoreFileRequest_StoreFile, error) {
 	firstRequest, err := stream.Recv()
 	if err != nil {
 		logger.Logger.Err(err).Msg("receiving message failed")
 		return nil, status.Errorf(codes.Internal, "receiving message failed. please retry the request")
 	}
-	msg, ok := firstRequest.File.(*apiRestaurantFile.StoreFileRequest_Name)
+	msg, ok := firstRequest.Part.(*apiRestaurantFile.StoreFileRequest_StoreFile)
 	if !ok {
-		return nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreFileRequest_Name' expected. Actual value is "+reflect.TypeOf(firstRequest.File).String()+".")
+		return nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreFileRequest_Name' expected. Actual value is "+reflect.TypeOf(firstRequest.Part).String()+".")
 	}
 	return msg, nil
 }
@@ -136,9 +136,9 @@ func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, *
 		logger.Logger.Err(err).Msg("failed to receive chunk")
 		return false, nil, status.Errorf(codes.Internal, "failed to receive chunk. please retry the request")
 	}
-	msg, ok := request.File.(*apiRestaurantFile.StoreFileRequest_Chunk)
+	msg, ok := request.Part.(*apiRestaurantFile.StoreFileRequest_Chunk)
 	if !ok {
-		return false, nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreFileRequest_Chunk' expected. Actual value is "+reflect.TypeOf(request.File).String()+".")
+		return false, nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreFileRequest_Chunk' expected. Actual value is "+reflect.TypeOf(request.Part).String()+".")
 	}
 	return false, msg, nil
 }

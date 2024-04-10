@@ -20,8 +20,10 @@ func CreateFileStream(t *testing.T) *FileService_StoreFileServer {
 
 func CreateMetadataRequest(t *testing.T, fileName string) *v1.StoreFileRequest {
 	metadata := &v1.StoreFileRequest{
-		File: &v1.StoreFileRequest_Name{
-			Name: fileName,
+		Part: &v1.StoreFileRequest_StoreFile{
+			StoreFile: &v1.StoreFile{
+				Name: fileName,
+			},
 		},
 	}
 	return metadata
@@ -29,7 +31,7 @@ func CreateMetadataRequest(t *testing.T, fileName string) *v1.StoreFileRequest {
 
 func CreateChunkRequest(t *testing.T, chunk []byte) *v1.StoreFileRequest {
 	chunkRequest := &v1.StoreFileRequest{
-		File: &v1.StoreFileRequest_Chunk{
+		Part: &v1.StoreFileRequest_Chunk{
 			Chunk: chunk,
 		},
 	}

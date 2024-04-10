@@ -33,15 +33,17 @@ func TestStoreFile(t *testing.T) {
 	require.Nil(t, err)
 
 	var metadata = &apiRestaurantFile.StoreFileRequest{
-		File: &apiRestaurantFile.StoreFileRequest_Name{
-			Name: fileName,
+		Part: &apiRestaurantFile.StoreFileRequest_StoreFile{
+			StoreFile: &apiRestaurantFile.StoreFile{
+				Name: fileName,
+			},
 		},
 	}
 	stream.Send(metadata)
 
 	for _, chunk := range chunks {
 		var chunkRequest = &apiRestaurantFile.StoreFileRequest{
-			File: &apiRestaurantFile.StoreFileRequest_Chunk{
+			Part: &apiRestaurantFile.StoreFileRequest_Chunk{
 				Chunk: chunk,
 			},
 		}
@@ -62,9 +64,7 @@ func TestStoreFile(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.RevisionId)
 
 	downloadStream, downloadError := client.DownloadFile(ctx, &apiRestaurantFile.DownloadFileRequest{
-		Download: &apiRestaurantFile.DownloadFileRequest_FileId{
-			FileId: actualResponse.StoredFile.Id,
-		},
+		FileId: actualResponse.StoredFile.Id,
 	})
 
 	require.Nil(t, downloadError)
