@@ -93,9 +93,10 @@ func TestStoreFile(t *testing.T) {
 	var receivedFile []byte
 	for {
 		downloadResponse, err := downloadStream.Recv()
-		if err != io.EOF {
+		if err == io.EOF {
 			break
 		}
+		require.Nil(t, err)
 		chunk := downloadResponse.GetChunk()
 		require.NotNil(t, chunk)
 		receivedFile = append(receivedFile, chunk...)
