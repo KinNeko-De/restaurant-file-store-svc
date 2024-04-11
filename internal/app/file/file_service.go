@@ -174,35 +174,48 @@ func createStoreFileResponse(createdFileMetadata *FileMetadata) (*apiRestaurantF
 }
 
 func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFileRequest, stream apiRestaurantFile.FileService_DownloadFileServer) error {
-	requested := request.GetFileId()
-	fileId, err := apiProtobuf.ToUuid(requested)
+	requestedFileId, err := getRequestedFileId(request)
 	if err != nil {
-		return err
+		// TODO insert expected uuid from somewhere where I already had it
+		return status.Error(codes.InvalidArgument, "invalid fileid "+request.GetFileId().Value+"please provide a valid fileId")
 	}
 
-	fileMetadata, err := FileMetadataRepositoryInstance.FetchFileMetadata(stream.Context(), fileId)
+	fileMetadata, err := FileMetadataRepositoryInstance.FetchFileMetadata(stream.Context(), requestedFileId)
 	if err != nil {
-		return err
+		// TODO what happens if id is not found?
+		return status.Error(codes.Internal, "error fetching file metadata. please retry the request")
 	}
-
 	revision := fileMetadata.FirstRevision()
+	err = sendMetadata(stream, revision)
+	if err != nil {
+		return status.Error(codes.Internal, "error sending file metadata. please retry the request")
+	}
 
-	stream.Send(&apiRestaurantFile.DownloadFileResponse{
-		Part: &apiRestaurantFile.DownloadFileResponse_Metadata{
-			Metadata: &apiRestaurantFile.StoredFileMetadata{
-				CreatedAt: timestamppb.New(revision.CreatedAt),
-				Size:      revision.Size,
-				MediaType: revision.MediaType,
-				Extension: revision.Extension,
-			},
-		},
-	})
+	err = sendFile(stream, requestedFileId, revision.Id)
+	if err != nil {
+		return status.Error(codes.Internal, "error sending file. please retry the request")
+	}
 
-	fileReader, err := FileRepositoryInstance.ReadFile(stream.Context(), fileId, revision.Id)
+	return nil
+}
+
+func sendFile(stream apiRestaurantFile.FileService_DownloadFileServer, requestedFileId uuid.UUID, revisionId uuid.UUID) error {
+	fileReader, err := FileRepositoryInstance.ReadFile(stream.Context(), requestedFileId, revisionId)
 	if err != nil {
 		return err
 	}
+	err = sendChunks(fileReader, stream)
+	if err != nil {
+		return status.Error(codes.Internal, "error sending file chunks. please retry the request")
+	}
+	err = fileReader.Close()
+	if err != nil {
+		// TODO log error and ignore
+	}
+	return nil
+}
 
+func sendChunks(fileReader io.ReadCloser, stream apiRestaurantFile.FileService_DownloadFileServer) error {
 	chunk := make([]byte, 16*1024)
 	for {
 		n, err := fileReader.Read(chunk)
@@ -218,11 +231,27 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 			},
 		})
 	}
-
-	err = fileReader.Close()
-	if err != nil {
-		// TODO log error and ignore
-	}
-
 	return nil
+}
+
+func sendMetadata(stream apiRestaurantFile.FileService_DownloadFileServer, revision Revision) error {
+	return stream.Send(&apiRestaurantFile.DownloadFileResponse{
+		Part: &apiRestaurantFile.DownloadFileResponse_Metadata{
+			Metadata: &apiRestaurantFile.StoredFileMetadata{
+				CreatedAt: timestamppb.New(revision.CreatedAt),
+				Size:      revision.Size,
+				MediaType: revision.MediaType,
+				Extension: revision.Extension,
+			},
+		},
+	})
+}
+
+func getRequestedFileId(request *apiRestaurantFile.DownloadFileRequest) (uuid.UUID, error) {
+	requested := request.GetFileId()
+	fileId, err := apiProtobuf.ToUuid(requested)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return fileId, nil
 }
