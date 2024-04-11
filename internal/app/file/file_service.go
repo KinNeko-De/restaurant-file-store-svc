@@ -186,7 +186,7 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 	revision := fileMetadata.FirstRevision()
 
 	stream.Send(&apiRestaurantFile.DownloadFileResponse{
-		File: &apiRestaurantFile.DownloadFileResponse_Metadata{
+		Part: &apiRestaurantFile.DownloadFileResponse_Metadata{
 			Metadata: &apiRestaurantFile.StoredFileMetadata{
 				CreatedAt: timestamppb.New(revision.CreatedAt),
 				Size:      revision.Size,
@@ -211,7 +211,7 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 			return err
 		}
 		stream.Send(&apiRestaurantFile.DownloadFileResponse{
-			File: &apiRestaurantFile.DownloadFileResponse_Chunk{
+			Part: &apiRestaurantFile.DownloadFileResponse_Chunk{
 				Chunk: chunk[:n],
 			},
 		})
