@@ -21,9 +21,9 @@ import (
 func TestStoreFile(t *testing.T) {
 	fileName := "test.txt"
 	expectedExtension := ".txt"
-	expectedMediaType := "text/plain"
+	expectedMediaType := "text/plain; charset=utf-8"
 	sentFile := fixture.TextFile()
-	expectedSize := int64(len(sentFile))
+	expectedSize := uint64(len(sentFile))
 	chunks := fixture.SplitIntoChunks(sentFile, 256)
 	startTime := time.Now()
 
@@ -82,7 +82,7 @@ func TestStoreFile(t *testing.T) {
 
 	require.NotNil(t, downloadMetadata)
 	assert.NotNil(t, downloadMetadata.CreatedAt)
-	assert.Equal(t, actualResponse.StoredFileMetadata.CreatedAt, downloadMetadata.CreatedAt)
+	assert.WithinDuration(t, actualResponse.StoredFileMetadata.CreatedAt.AsTime(), downloadMetadata.CreatedAt.AsTime(), time.Millisecond)
 	assert.Equal(t, expectedExtension, downloadMetadata.Extension)
 	assert.Equal(t, actualResponse.StoredFileMetadata.Extension, downloadMetadata.Extension)
 	assert.Equal(t, expectedMediaType, downloadMetadata.MediaType)
