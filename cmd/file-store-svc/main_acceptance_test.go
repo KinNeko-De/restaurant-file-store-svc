@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"testing"
 	"time"
 
@@ -89,5 +90,16 @@ func TestStoreFile(t *testing.T) {
 	assert.Equal(t, expectedSize, downloadMetadata.Size)
 	assert.Equal(t, actualResponse.StoredFileMetadata.Size, downloadMetadata.Size)
 
-	// TODO: compare file content
+	var receivedFile []byte
+	for {
+		downloadResponse, err := downloadStream.Recv()
+		if err != io.EOF {
+			break
+		}
+		chunk := downloadResponse.GetChunk()
+		require.NotNil(t, chunk)
+		receivedFile = append(receivedFile, chunk...)
+	}
+
+	assert.Equal(t, sentFile, receivedFile)
 }
