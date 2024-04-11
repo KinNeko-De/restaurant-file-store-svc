@@ -201,7 +201,7 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 		return err
 	}
 
-	chunk := make([]byte, 1024)
+	chunk := make([]byte, 16*1024)
 	for {
 		n, err := fileReader.Read(chunk)
 		if err == io.EOF {

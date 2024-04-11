@@ -19,7 +19,10 @@ import (
 
 func TestStoreFile(t *testing.T) {
 	fileName := "test.txt"
+	expectedExtension := ".txt"
+	expectedMediaType := "text/plain"
 	sentFile := fixture.TextFile()
+	expectedSize := int64(len(sentFile))
 	chunks := fixture.SplitIntoChunks(sentFile, 256)
 	startTime := time.Now()
 
@@ -29,8 +32,8 @@ func TestStoreFile(t *testing.T) {
 
 	client := apiRestaurantFile.NewFileServiceClient(conn)
 	ctx := context.Background()
-	stream, err := client.StoreFile(ctx)
-	require.Nil(t, err)
+	uploadStream, uploadErr := client.StoreFile(ctx)
+	require.Nil(t, uploadErr)
 
 	var metadata = &apiRestaurantFile.StoreFileRequest{
 		Part: &apiRestaurantFile.StoreFileRequest_StoreFile{
@@ -39,7 +42,7 @@ func TestStoreFile(t *testing.T) {
 			},
 		},
 	}
-	stream.Send(metadata)
+	uploadStream.Send(metadata)
 
 	for _, chunk := range chunks {
 		var chunkRequest = &apiRestaurantFile.StoreFileRequest{
@@ -47,11 +50,11 @@ func TestStoreFile(t *testing.T) {
 				Chunk: chunk,
 			},
 		}
-		stream.Send(chunkRequest)
+		uploadStream.Send(chunkRequest)
 	}
 
-	actualResponse, err := stream.CloseAndRecv()
-	require.Nil(t, err)
+	actualResponse, uploadErr := uploadStream.CloseAndRecv()
+	require.Nil(t, uploadErr)
 	duration := time.Since(startTime)
 	t.Logf("Call duration: %s", duration)
 
@@ -63,16 +66,28 @@ func TestStoreFile(t *testing.T) {
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.RevisionId)
 
-	downloadStream, downloadError := client.DownloadFile(ctx, &apiRestaurantFile.DownloadFileRequest{
+	downloadStream, downloadErr := client.DownloadFile(ctx, &apiRestaurantFile.DownloadFileRequest{
 		FileId: actualResponse.StoredFile.Id,
 	})
 
-	require.Nil(t, downloadError)
+	require.Nil(t, downloadErr)
 	require.NotNil(t, downloadStream)
 
-	metadata2, err2 := downloadStream.Recv()
-	require.Nil(t, err2)
-	require.NotNil(t, metadata2)
+	downloadResponse, err := downloadStream.Recv()
+	require.Nil(t, err)
+	require.NotNil(t, downloadResponse)
 
-	// TODO assert more
+	downloadMetadata := downloadResponse.GetMetadata()
+
+	require.NotNil(t, downloadMetadata)
+	assert.NotNil(t, downloadMetadata.CreatedAt)
+	assert.Equal(t, actualResponse.StoredFileMetadata.CreatedAt, downloadMetadata.CreatedAt)
+	assert.Equal(t, expectedExtension, downloadMetadata.Extension)
+	assert.Equal(t, actualResponse.StoredFileMetadata.Extension, downloadMetadata.Extension)
+	assert.Equal(t, expectedMediaType, downloadMetadata.MediaType)
+	assert.Equal(t, actualResponse.StoredFileMetadata.MediaType, downloadMetadata.MediaType)
+	assert.Equal(t, expectedSize, downloadMetadata.Size)
+	assert.Equal(t, actualResponse.StoredFileMetadata.Size, downloadMetadata.Size)
+
+	// TODO: compare file content
 }
