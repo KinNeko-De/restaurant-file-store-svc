@@ -13,4 +13,5 @@ var (
 type FileMetadataRepository interface {
 	StoreFileMetadata(ctx context.Context, fileMetadata FileMetadata) error
 	FetchFileMetadata(ctx context.Context, fileId uuid.UUID) (FileMetadata, error)
+	NotFoundError() error
 }

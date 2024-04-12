@@ -79,6 +79,51 @@ func (_c *MockFileMetadataRepository_FetchFileMetadata_Call) RunAndReturn(run fu
 	return _c
 }
 
+// NotFoundError provides a mock function with given fields:
+func (_m *MockFileMetadataRepository) NotFoundError() error {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for NotFoundError")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFileMetadataRepository_NotFoundError_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NotFoundError'
+type MockFileMetadataRepository_NotFoundError_Call struct {
+	*mock.Call
+}
+
+// NotFoundError is a helper method to define mock.On call
+func (_e *MockFileMetadataRepository_Expecter) NotFoundError() *MockFileMetadataRepository_NotFoundError_Call {
+	return &MockFileMetadataRepository_NotFoundError_Call{Call: _e.mock.On("NotFoundError")}
+}
+
+func (_c *MockFileMetadataRepository_NotFoundError_Call) Run(run func()) *MockFileMetadataRepository_NotFoundError_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFileMetadataRepository_NotFoundError_Call) Return(_a0 error) *MockFileMetadataRepository_NotFoundError_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFileMetadataRepository_NotFoundError_Call) RunAndReturn(run func() error) *MockFileMetadataRepository_NotFoundError_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // StoreFileMetadata provides a mock function with given fields: ctx, fileMetadata
 func (_m *MockFileMetadataRepository) StoreFileMetadata(ctx context.Context, fileMetadata FileMetadata) error {
 	ret := _m.Called(ctx, fileMetadata)

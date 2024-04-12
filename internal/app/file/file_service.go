@@ -1,6 +1,8 @@
 package file
 
 import (
+	"context"
+	"errors"
 	"io"
 	"reflect"
 
@@ -181,10 +183,9 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 	}
 	scopedLogger := logger.Logger.With().Str("fileId", requestedFileId.String()).Logger()
 
-	fileMetadata, err := FileMetadataRepositoryInstance.FetchFileMetadata(stream.Context(), requestedFileId)
+	fileMetadata, err := fetchMetadata(stream.Context(), requestedFileId, scopedLogger)
 	if err != nil {
-		// TODO what happens if id is not found?
-		return status.Error(codes.Internal, "error fetching file metadata. please retry the request")
+		return err
 	}
 	revision := fileMetadata.FirstRevision()
 	err = sendMetadata(stream, revision)
@@ -200,6 +201,18 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 	}
 
 	return nil
+}
+
+func fetchMetadata(ctx context.Context, requestedFileId uuid.UUID, scopedLogger zerolog.Logger) (FileMetadata, error) {
+	fileMetadata, err := FileMetadataRepositoryInstance.FetchFileMetadata(ctx, requestedFileId)
+	if errors.Is(err, FileMetadataRepositoryInstance.NotFoundError()) {
+		scopedLogger.Err(err).Msg("file not found")
+		return FileMetadata{}, status.Error(codes.NotFound, "file with id '"+requestedFileId.String()+"' not found.")
+	}
+	if err != nil {
+		return FileMetadata{}, status.Error(codes.Internal, "error fetching file metadata. please retry the request")
+	}
+	return fileMetadata, nil
 }
 
 func getRequestedFileId(request *apiRestaurantFile.DownloadFileRequest) (uuid.UUID, error) {

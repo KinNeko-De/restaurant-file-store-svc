@@ -41,6 +41,10 @@ func (repository *MongoDBRepository) FetchFileMetadata(ctx context.Context, file
 	return fileMetadataToDomainModel(dataModel), nil
 }
 
+func (repository *MongoDBRepository) NotFoundError() error {
+	return mongo.ErrNoDocuments
+}
+
 func fileMetadataToDomainModel(dataModel fileMetadata) file.FileMetadata {
 	return file.FileMetadata{
 		Id:        uuid.MustParse(dataModel.Id),
