@@ -24,7 +24,7 @@ func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, file
 
 	_, err := repository.collection.InsertOne(ctx, dataModel)
 	if err != nil {
-		return fmt.Errorf("failed to insert file metadata: %v", err)
+		return fmt.Errorf("failed to insert file metadata: %w", err)
 	}
 
 	return nil
