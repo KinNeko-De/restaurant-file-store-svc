@@ -8,6 +8,7 @@ import (
 	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
+	"github.com/rs/zerolog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -178,6 +179,7 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 	if err != nil {
 		return status.Error(codes.InvalidArgument, "FileId '"+request.FileId.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
 	}
+	scopedLogger := logger.Logger.With().Str("fileId", requestedFileId.String()).Logger()
 
 	fileMetadata, err := FileMetadataRepositoryInstance.FetchFileMetadata(stream.Context(), requestedFileId)
 	if err != nil {
@@ -187,29 +189,34 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 	revision := fileMetadata.FirstRevision()
 	err = sendMetadata(stream, revision)
 	if err != nil {
+		scopedLogger.Err(err).Msg("error sending file metadata")
 		return status.Error(codes.Internal, "error sending file metadata. please retry the request")
 	}
 
-	err = sendFile(stream, requestedFileId, revision.Id)
+	err = sendFile(stream, requestedFileId, revision.Id, scopedLogger)
 	if err != nil {
-		return status.Error(codes.Internal, "error sending file. please retry the request")
+		scopedLogger.Err(err).Msg("error sending file")
+		return err
 	}
 
 	return nil
 }
 
-func sendFile(stream apiRestaurantFile.FileService_DownloadFileServer, requestedFileId uuid.UUID, revisionId uuid.UUID) error {
+func sendFile(stream apiRestaurantFile.FileService_DownloadFileServer, requestedFileId uuid.UUID, revisionId uuid.UUID, scopedLogger zerolog.Logger) error {
 	fileReader, err := FileRepositoryInstance.ReadFile(stream.Context(), requestedFileId, revisionId)
 	if err != nil {
-		return err
+		// TODO what happens if id is not found?
+		// TODO log error
+		return status.Error(codes.Internal, "error reading file. please retry the request")
 	}
 	err = sendChunks(fileReader, stream)
 	if err != nil {
+		scopedLogger.Err(err).Msg("error sending file chunks")
 		return status.Error(codes.Internal, "error sending file chunks. please retry the request")
 	}
 	err = fileReader.Close()
 	if err != nil {
-		// TODO log error and ignore
+		scopedLogger.Err(err).Msg("closing file fail. error is ignored")
 	}
 	return nil
 }
