@@ -4,6 +4,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -124,7 +125,8 @@ func TestFetchFileMetadata_FileDoesNotExists(t *testing.T) {
 	defer tearDown(t, sut.collection)
 
 	_, actualError := sut.FetchFileMetadata(ctx, fileId)
-	require.Nil(t, actualError)
+	require.NotNil(t, actualError)
+	assert.True(t, errors.Is(actualError, mongo.ErrNoDocuments))
 }
 
 func assertFileMetadataEqual(t *testing.T, expectedFileMetadata fileMetadata, actualFileMetadata fileMetadata) {
