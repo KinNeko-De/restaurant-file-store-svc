@@ -9,11 +9,13 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/file"
 	ioFixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/io"
 	"github.com/stretchr/testify/assert"
 	mock "github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -382,8 +384,39 @@ func TestDownloadFile_FileIdIsNil(t *testing.T) {
 
 	assert.NotNil(t, err)
 	actualStatus, ok := status.FromError(err)
-	assert.True(t, ok, "Expected a gRPC status error")
+	require.True(t, ok, "Expected a gRPC status error")
 	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "fileId")
 	assert.Contains(t, actualStatus.Message(), "mandatory")
+}
+
+func TestDownloadFile_FileIdIsInvalid(t *testing.T) {
+	tests := []struct {
+		uuid string
+	}{
+		{""},
+		{"433b4b7c-4b1e-4b1e4b1e4b1e"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.uuid, func(t *testing.T) {
+			request := &v1.DownloadFileRequest{
+				FileId: &protobuf.Uuid{
+					Value: test.uuid,
+				},
+			}
+
+			mockStream := fixture.CreateDownloadFileStream(t)
+			sut := createSut(t, nil, nil)
+			err := sut.DownloadFile(request, mockStream)
+
+			assert.NotNil(t, err)
+			actualStatus, ok := status.FromError(err)
+			require.True(t, ok, "Expected a gRPC status error")
+			assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), "fileId")
+			assert.Contains(t, actualStatus.Message(), "not a valid uuid")
+			assert.Contains(t, actualStatus.Message(), test.uuid)
+		})
+	}
 }
