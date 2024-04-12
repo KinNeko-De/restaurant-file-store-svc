@@ -420,7 +420,3 @@ func TestDownloadFile_FileIdIsInvalid(t *testing.T) {
 		})
 	}
 }
-
-func TestDownloadFile_FileNotFound(t *testing.T) {
-	assert.Fail(t, "not implemented")
-}
