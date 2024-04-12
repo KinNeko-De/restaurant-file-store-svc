@@ -177,7 +177,7 @@ func createStoreFileResponse(createdFileMetadata *FileMetadata) (*apiRestaurantF
 func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFileRequest, stream apiRestaurantFile.FileService_DownloadFileServer) error {
 	requestedFileId, err := getRequestedFileId(request)
 	if err != nil {
-		return status.Error(codes.InvalidArgument, "FileId '"+request.FileId.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+		return err
 	}
 	scopedLogger := logger.Logger.With().Str("fileId", requestedFileId.String()).Logger()
 
@@ -200,6 +200,19 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 	}
 
 	return nil
+}
+
+func getRequestedFileId(request *apiRestaurantFile.DownloadFileRequest) (uuid.UUID, error) {
+	requested := request.GetFileId()
+	if requested == nil {
+		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId is mandatory. Please provide a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+	fileId, err := apiProtobuf.ToUuid(requested)
+	if err != nil {
+		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId '"+requested.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+
+	}
+	return fileId, nil
 }
 
 func sendFile(stream apiRestaurantFile.FileService_DownloadFileServer, requestedFileId uuid.UUID, revisionId uuid.UUID, scopedLogger zerolog.Logger) error {
@@ -251,13 +264,4 @@ func sendMetadata(stream apiRestaurantFile.FileService_DownloadFileServer, revis
 			},
 		},
 	})
-}
-
-func getRequestedFileId(request *apiRestaurantFile.DownloadFileRequest) (uuid.UUID, error) {
-	requested := request.GetFileId()
-	fileId, err := apiProtobuf.ToUuid(requested)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return fileId, nil
 }
