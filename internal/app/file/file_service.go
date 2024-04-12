@@ -176,8 +176,7 @@ func createStoreFileResponse(createdFileMetadata *FileMetadata) (*apiRestaurantF
 func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFileRequest, stream apiRestaurantFile.FileService_DownloadFileServer) error {
 	requestedFileId, err := getRequestedFileId(request)
 	if err != nil {
-		// TODO insert expected uuid from somewhere where I already had it
-		return status.Error(codes.InvalidArgument, "invalid fileid "+request.GetFileId().Value+"please provide a valid fileId")
+		return status.Error(codes.InvalidArgument, "FileId '"+request.FileId.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
 	}
 
 	fileMetadata, err := FileMetadataRepositoryInstance.FetchFileMetadata(stream.Context(), requestedFileId)
