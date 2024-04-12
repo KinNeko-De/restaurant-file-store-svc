@@ -35,7 +35,7 @@ func (repository *MongoDBRepository) FetchFileMetadata(ctx context.Context, file
 	var dataModel fileMetadata
 	err := repository.collection.FindOne(ctx, bson.M{"_id": requestedId}).Decode(&dataModel)
 	if err != nil {
-		return file.FileMetadata{}, fmt.Errorf("failed to fetch file metadata: %v", err)
+		return file.FileMetadata{}, fmt.Errorf("failed to fetch file metadata: %w", err)
 	}
 
 	return fileMetadataToDomainModel(dataModel), nil
