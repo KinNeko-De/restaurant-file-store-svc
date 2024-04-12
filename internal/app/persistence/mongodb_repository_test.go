@@ -17,23 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func TestCreateFileMetadata(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongodb.MongoDbServer))
-	require.Nil(t, err)
-
-	defer func() {
-		if err = client.Disconnect(ctx); err != nil {
-			panic(err)
-		}
-	}()
-
-	sut, err := NewMongoDBRepository(ctx, client, uuid.NewString(), t.Name()+uuid.NewString())
-	require.Nil(t, err)
-	defer tearDown(t, sut.collection)
-
+func TestStoreFileMetadata(t *testing.T) {
 	input := file.FileMetadata{
 		Id: uuid.New(),
 
@@ -61,14 +45,86 @@ func TestCreateFileMetadata(t *testing.T) {
 		},
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongodb.MongoDbServer))
+	require.Nil(t, err)
+	defer disconnectClient(ctx, client)
+	sut, err := NewMongoDBRepository(ctx, client, uuid.NewString(), t.Name()+uuid.NewString())
+	require.Nil(t, err)
+	defer tearDown(t, sut.collection)
+
 	err = sut.StoreFileMetadata(ctx, input)
 	require.Nil(t, err)
 
 	var actualFileMetadata fileMetadata
 	err = sut.collection.FindOne(ctx, bson.M{"_id": input.Id.String()}).Decode(&actualFileMetadata)
 	require.Nil(t, err)
-
 	assertFileMetadataEqual(t, expectedFileMetadata, actualFileMetadata)
+}
+
+func TestFetchFileMetadata(t *testing.T) {
+	fileId := uuid.New()
+
+	expectedFileMetadata := file.FileMetadata{
+		Id: fileId,
+		Revisions: []file.Revision{
+			{
+				Id:        uuid.New(),
+				Extension: ".txt",
+				MediaType: "text/plain; charset=utf-8",
+				Size:      1024,
+				CreatedAt: time.Now().UTC().Round(time.Millisecond),
+			},
+		},
+	}
+
+	existingFile := fileMetadata{
+		Id: fileId.String(),
+		Revisions: []revision{
+			{
+				Id:        expectedFileMetadata.Revisions[0].Id.String(),
+				Extension: expectedFileMetadata.Revisions[0].Extension,
+				MediaType: expectedFileMetadata.Revisions[0].MediaType,
+				Size:      expectedFileMetadata.Revisions[0].Size,
+				CreatedAt: expectedFileMetadata.Revisions[0].CreatedAt,
+			},
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongodb.MongoDbServer))
+	require.Nil(t, err)
+	defer disconnectClient(ctx, client)
+
+	sut, err := NewMongoDBRepository(ctx, client, uuid.NewString(), t.Name()+uuid.NewString())
+	require.Nil(t, err)
+	defer tearDown(t, sut.collection)
+	_, err = sut.collection.InsertOne(ctx, existingFile)
+	require.Nil(t, err)
+
+	actualFileMetadata, err := sut.FetchFileMetadata(ctx, fileId)
+	require.Nil(t, err)
+
+	assert.Equal(t, expectedFileMetadata, actualFileMetadata)
+}
+
+func TestFetchFileMetadata_FileDoesNotExists(t *testing.T) {
+	fileId := uuid.New()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongodb.MongoDbServer))
+	require.Nil(t, err)
+	defer disconnectClient(ctx, client)
+
+	sut, err := NewMongoDBRepository(ctx, client, uuid.NewString(), t.Name()+uuid.NewString())
+	require.Nil(t, err)
+	defer tearDown(t, sut.collection)
+
+	_, actualError := sut.FetchFileMetadata(ctx, fileId)
+	require.Nil(t, actualError)
 }
 
 func assertFileMetadataEqual(t *testing.T, expectedFileMetadata fileMetadata, actualFileMetadata fileMetadata) {
@@ -93,5 +149,11 @@ func tearDown(t *testing.T, collection *mongo.Collection) {
 
 	if err := collection.Drop(ctx); err != nil {
 		t.Fatalf("Failed to drop collection: %v", err)
+	}
+}
+
+func disconnectClient(ctx context.Context, client *mongo.Client) {
+	if err := client.Disconnect(ctx); err != nil {
+		panic(err)
 	}
 }
