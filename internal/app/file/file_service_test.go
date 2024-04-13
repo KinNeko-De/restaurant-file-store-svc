@@ -5,11 +5,14 @@ package file
 import (
 	context "context"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
+	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
+	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/file"
 	ioFixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/io"
@@ -30,7 +33,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	var generatedFileId *uuid.UUID
 	var generatedRevisionId *uuid.UUID
 	var storedFileMetadata *FileMetadata
-	var actualResponse *v1.StoreFileResponse
+	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
 	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
@@ -78,7 +81,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	var generatedFileId *uuid.UUID
 	var generatedRevisionId *uuid.UUID
 	var storedFileMetadata *FileMetadata
-	var actualResponse *v1.StoreFileResponse
+	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
 	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
@@ -113,7 +116,7 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	var generatedFileId *uuid.UUID
 	var generatedRevisionId *uuid.UUID
 	var storedFileMetadata *FileMetadata
-	var actualResponse *v1.StoreFileResponse
+	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, chunks)
 	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
 	fileWriter := ioFixture.CreateWriterCloser(t, chunks)
@@ -400,7 +403,7 @@ func TestDownloadFile_FileIdIsInvalid(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.uuid, func(t *testing.T) {
-			request := &v1.DownloadFileRequest{
+			request := &apiRestaurantFile.DownloadFileRequest{
 				FileId: &protobuf.Uuid{
 					Value: test.uuid,
 				},
@@ -417,6 +420,40 @@ func TestDownloadFile_FileIdIsInvalid(t *testing.T) {
 			assert.Contains(t, actualStatus.Message(), "fileId")
 			assert.Contains(t, actualStatus.Message(), "not a valid uuid")
 			assert.Contains(t, actualStatus.Message(), test.uuid)
+		})
+	}
+}
+
+func TestDownloadFile_FileNotFound(t *testing.T) {
+	tests := []struct {
+		notFoundError error
+	}{
+		{errors.New("file not found")},
+		{errors.Join(errors.New("file not found"), errors.New("wrappedError"))},
+		{fmt.Errorf("wrapper error %w", errors.New("file not found"))},
+	}
+
+	for _, test := range tests {
+		t.Run(test.notFoundError.Error(), func(t *testing.T) {
+			fileId := uuid.New()
+			requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
+
+			request := &apiRestaurantFile.DownloadFileRequest{
+				FileId: requestedFileId,
+			}
+			mockFileMetadataRepository := &MockFileMetadataRepository{}
+			mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(FileMetadata{}, test.notFoundError).Times(1)
+			mockFileMetadataRepository.EXPECT().NotFoundError().Return(test.notFoundError).Times(1)
+
+			sut := createSut(t, nil, mockFileMetadataRepository)
+			mockStream := fixture.CreateDownloadFileStream(t)
+			actualError := sut.DownloadFile(request, mockStream)
+
+			assert.NotNil(t, actualError)
+			actualStatus, ok := status.FromError(actualError)
+			require.True(t, ok, "Expected a gRPC status error")
+			assert.Equal(t, codes.NotFound, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), fileId.String())
 		})
 	}
 }
