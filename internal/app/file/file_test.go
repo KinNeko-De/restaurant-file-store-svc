@@ -201,3 +201,26 @@ func TestFileMetadata_GetRevision(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedRevision, actualRevision)
 }
+
+func TestFileMetadata_GetRevision_NotFound(t *testing.T) {
+	requestedRevision := uuid.New()
+	existingRevision := uuid.New()
+
+	latestRevision := Revision{
+		Id:        existingRevision,
+		Extension: ".pdf",
+		MediaType: "application/pdf",
+		Size:      2048,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	sut := &FileMetadata{
+		Id:        uuid.New(),
+		Revisions: []Revision{latestRevision},
+	}
+
+	actualRevision, err := sut.GetRevision(requestedRevision)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), requestedRevision.String())
+	assert.Equal(t, Revision{}, actualRevision)
+}

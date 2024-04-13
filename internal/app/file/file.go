@@ -30,7 +30,7 @@ func (f *FileMetadata) GetRevision(revisionId uuid.UUID) (Revision, error) {
 			return revision, nil
 		}
 	}
-	return Revision{}, fmt.Errorf("revision with UUID %s not found", revisionId)
+	return Revision{}, fmt.Errorf("revision '%s' not found", revisionId)
 }
 
 func (f *FileMetadata) FirstRevision() Revision {
