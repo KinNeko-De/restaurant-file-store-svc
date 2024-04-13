@@ -60,7 +60,7 @@ func TestFileMetadata_LatestRevision_TwoRevisions(t *testing.T) {
 	assert.Equal(t, expectedRevision, latestRevision)
 }
 
-func TestFileMetadata_FirstRevision_TwoRevisions(t *testing.T) {
+func TestFileMetadata_firstRevision_TwoRevisions(t *testing.T) {
 	fileId := uuid.New()
 	expectedRevision := Revision{
 		Id:        uuid.New(),
@@ -82,7 +82,7 @@ func TestFileMetadata_FirstRevision_TwoRevisions(t *testing.T) {
 		Revisions: []Revision{expectedRevision, revision2},
 	}
 
-	FirstRevision := fileMetadata.FirstRevision()
+	FirstRevision := fileMetadata.firstRevision()
 
 	assert.Equal(t, expectedRevision, FirstRevision)
 }

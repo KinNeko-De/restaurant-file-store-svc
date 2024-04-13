@@ -187,7 +187,7 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 	if err != nil {
 		return err
 	}
-	revision := fileMetadata.FirstRevision()
+	revision := fileMetadata.LatestRevision()
 	err = sendMetadata(stream, revision)
 	if err != nil {
 		scopedLogger.Err(err).Msg("error sending file metadata")
@@ -248,9 +248,9 @@ func sendFile(stream apiRestaurantFile.FileService_DownloadFileServer, requested
 }
 
 func sendChunks(fileReader io.ReadCloser, stream apiRestaurantFile.FileService_DownloadFileServer) error {
-	chunk := make([]byte, 16*1024)
+	maxSizeToRead := make([]byte, 16*1024)
 	for {
-		n, err := fileReader.Read(chunk)
+		readBytes, err := fileReader.Read(maxSizeToRead)
 		if err == io.EOF {
 			break
 		}
@@ -259,7 +259,7 @@ func sendChunks(fileReader io.ReadCloser, stream apiRestaurantFile.FileService_D
 		}
 		stream.Send(&apiRestaurantFile.DownloadFileResponse{
 			Part: &apiRestaurantFile.DownloadFileResponse_Chunk{
-				Chunk: chunk[:n],
+				Chunk: maxSizeToRead[:readBytes],
 			},
 		})
 	}

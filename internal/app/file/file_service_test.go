@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
@@ -458,4 +459,76 @@ func TestDownloadFile_FileNotFound(t *testing.T) {
 			assert.Contains(t, actualStatus.Message(), fileId.String())
 		})
 	}
+}
+
+func TestDownloadFile_ErrorFetchingMetadataThatIsNotFileNotFound(t *testing.T) {
+	fileId := uuid.New()
+	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
+
+	request := &apiRestaurantFile.DownloadFileRequest{
+		FileId: requestedFileId,
+	}
+	mockFileMetadataRepository := &MockFileMetadataRepository{}
+	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(FileMetadata{}, errors.New("ups..someting went wrong")).Times(1)
+	mockFileMetadataRepository.EXPECT().NotFoundError().Return(errors.New("file not found")).Times(1)
+
+	sut := createSut(t, nil, mockFileMetadataRepository)
+	mockStream := fixture.CreateDownloadFileStream(t)
+	actualError := sut.DownloadFile(request, mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	require.True(t, ok, "Expected a gRPC status error")
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+}
+
+func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *testing.T) {
+	fileId := uuid.New()
+	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
+	fileThatIsBiggerThanTheMaxChunkSizeForGrpc := fixture.PdfFile()
+
+	firstRevision := Revision{
+		Id:        uuid.New(),
+		Extension: ".txt",
+		MediaType: "text/plain",
+		Size:      1024,
+		CreatedAt: time.Now().UTC().Add(-time.Hour),
+	}
+
+	latestedRevision := Revision{
+		Id:        uuid.New(),
+		Extension: ".pdf",
+		MediaType: "application/pdf",
+		Size:      2048,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	fileMetadata := FileMetadata{
+		Id:        fileId,
+		Revisions: []Revision{firstRevision, latestedRevision},
+	}
+
+	request := &apiRestaurantFile.DownloadFileRequest{
+		FileId: requestedFileId,
+	}
+	mockFileMetadataRepository := &MockFileMetadataRepository{}
+	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(fileMetadata, nil).Times(1)
+	mockFileMetadataRepository.EXPECT().NotFoundError().Return(errors.New("file not found")).Times(1)
+	mockFileRepository := &MockFileRepository{}
+	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, latestedRevision.Id).Return(ioFixture.CreateReadCloser(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc), nil).Times(1)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	mockStream := fixture.CreateDownloadFileStream(t)
+	mockStream.EXPECT().Send(mock.MatchedBy(func(response *apiRestaurantFile.DownloadFileResponse) bool {
+		return response.GetMetadata().Extension == latestedRevision.Extension &&
+			response.GetMetadata().MediaType == latestedRevision.MediaType &&
+			response.GetMetadata().Size == latestedRevision.Size &&
+			response.GetMetadata().CreatedAt.AsTime().Equal(latestedRevision.CreatedAt)
+	})).Return(nil).Times(1)
+
+	mockStream.EXPECT().Send(mock.Anything).Return(nil) // TODO asssert that the chunks are the same as the file
+
+	actualError := sut.DownloadFile(request, mockStream)
+
+	assert.Nil(t, actualError)
 }
