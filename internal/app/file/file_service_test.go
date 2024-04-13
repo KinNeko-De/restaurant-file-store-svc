@@ -526,9 +526,12 @@ func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *tes
 			response.GetMetadata().CreatedAt.AsTime().Equal(latestedRevision.CreatedAt)
 	})).Return(nil).Times(1)
 
-	mockStream.EXPECT().Send(mock.Anything).Return(nil) // TODO asssert that the chunks are the same as the file
-
+	actualFile := make([]byte, 0)
+	mockStream.EXPECT().Send(mock.Anything).Run(func(response *v1.DownloadFileResponse) {
+		actualFile = append(actualFile, response.GetChunk()...)
+	}).Return(nil)
 	actualError := sut.DownloadFile(request, mockStream)
 
 	assert.Nil(t, actualError)
+	assert.Equal(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc, actualFile)
 }
