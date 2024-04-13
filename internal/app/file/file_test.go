@@ -191,12 +191,12 @@ func TestFileMetadata_GetRevision(t *testing.T) {
 		CreatedAt: time.Now().UTC(),
 	}
 
-	fileMetadata := &FileMetadata{
+	sut := &FileMetadata{
 		Id:        fileId,
 		Revisions: []Revision{expectedRevision, latestRevision},
 	}
 
-	actualRevision, err := fileMetadata.GetRevision(expectedRevision.Id)
+	actualRevision, err := sut.GetRevision(expectedRevision.Id)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedRevision, actualRevision)
