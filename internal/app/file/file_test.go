@@ -173,3 +173,31 @@ func TestNewRevision(t *testing.T) {
 	assert.Equal(t, fileSize, revision.Size)
 	assert.WithinDuration(t, time.Now().UTC(), revision.CreatedAt, time.Second)
 }
+
+func TestFileMetadata_GetRevision(t *testing.T) {
+	fileId := uuid.New()
+	expectedRevision := Revision{
+		Id:        uuid.New(),
+		Extension: ".txt",
+		MediaType: "text/plain; charset=utf-8",
+		Size:      1024,
+		CreatedAt: time.Now().UTC().Add(-time.Hour),
+	}
+	latestRevision := Revision{
+		Id:        uuid.New(),
+		Extension: ".pdf",
+		MediaType: "application/pdf",
+		Size:      2048,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	fileMetadata := &FileMetadata{
+		Id:        fileId,
+		Revisions: []Revision{expectedRevision, latestRevision},
+	}
+
+	actualRevision, err := fileMetadata.GetRevision(expectedRevision.Id)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedRevision, actualRevision)
+}
