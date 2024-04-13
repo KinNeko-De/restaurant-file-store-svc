@@ -395,14 +395,15 @@ func TestDownloadFile_FileIdIsNil(t *testing.T) {
 
 func TestDownloadFile_FileIdIsInvalid(t *testing.T) {
 	tests := []struct {
+		name string
 		uuid string
 	}{
-		{""},
-		{"433b4b7c-4b1e-4b1e4b1e4b1e"},
+		{"Empty", ""},
+		{"InvalidFormat", "433b4b7c-4b1e-4b1e4b1e4b1e"},
 	}
 
 	for _, test := range tests {
-		t.Run(test.uuid, func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			request := &apiRestaurantFile.DownloadFileRequest{
 				FileId: &protobuf.Uuid{
 					Value: test.uuid,
@@ -426,15 +427,16 @@ func TestDownloadFile_FileIdIsInvalid(t *testing.T) {
 
 func TestDownloadFile_FileNotFound(t *testing.T) {
 	tests := []struct {
+		name          string
 		notFoundError error
 	}{
-		{errors.New("file not found")},
-		{errors.Join(errors.New("file not found"), errors.New("wrappedError"))},
-		{fmt.Errorf("wrapper error %w", errors.New("file not found"))},
+		{"NotWrappedEror", errors.New("file not found")},
+		{"JoinedError", errors.Join(errors.New("file not found"), errors.New("wrappedError"))},
+		{"WrappedError", fmt.Errorf("wrapper error %w", errors.New("file not found"))},
 	}
 
 	for _, test := range tests {
-		t.Run(test.notFoundError.Error(), func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			fileId := uuid.New()
 			requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
 
