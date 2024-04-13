@@ -440,10 +440,8 @@ func TestDownloadFile_FileNotFound(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fileId := uuid.New()
 			requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
+			request := fixture.CreateDownloadFileRequest(t, requestedFileId)
 
-			request := &apiRestaurantFile.DownloadFileRequest{
-				FileId: requestedFileId,
-			}
 			mockFileMetadataRepository := &MockFileMetadataRepository{}
 			mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(FileMetadata{}, test.notFoundError).Times(1)
 			mockFileMetadataRepository.EXPECT().NotFoundError().Return(test.notFoundError).Times(1)
@@ -464,10 +462,8 @@ func TestDownloadFile_FileNotFound(t *testing.T) {
 func TestDownloadFile_ErrorFetchingMetadataThatIsNotFileNotFound(t *testing.T) {
 	fileId := uuid.New()
 	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
+	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
 
-	request := &apiRestaurantFile.DownloadFileRequest{
-		FileId: requestedFileId,
-	}
 	mockFileMetadataRepository := &MockFileMetadataRepository{}
 	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(FileMetadata{}, errors.New("ups..someting went wrong")).Times(1)
 	mockFileMetadataRepository.EXPECT().NotFoundError().Return(errors.New("file not found")).Times(1)
@@ -485,6 +481,7 @@ func TestDownloadFile_ErrorFetchingMetadataThatIsNotFileNotFound(t *testing.T) {
 func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *testing.T) {
 	fileId := uuid.New()
 	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
+	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
 	fileThatIsBiggerThanTheMaxChunkSizeForGrpc := fixture.PdfFile()
 
 	firstRevision := Revision{
@@ -508,22 +505,21 @@ func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *tes
 		Revisions: []Revision{firstRevision, latestedRevision},
 	}
 
-	request := &apiRestaurantFile.DownloadFileRequest{
-		FileId: requestedFileId,
-	}
 	mockFileMetadataRepository := &MockFileMetadataRepository{}
 	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(fileMetadata, nil).Times(1)
 	mockFileMetadataRepository.EXPECT().NotFoundError().Return(errors.New("file not found")).Times(1)
 	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, latestedRevision.Id).Return(ioFixture.CreateReadCloser(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc), nil).Times(1)
+	mockReader := ioFixture.CreateReadCloser(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc)
+	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, latestedRevision.Id).Return(mockReader, nil).Times(1)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	mockStream := fixture.CreateDownloadFileStream(t)
 	mockStream.EXPECT().Send(mock.MatchedBy(func(response *apiRestaurantFile.DownloadFileResponse) bool {
-		return response.GetMetadata().Extension == latestedRevision.Extension &&
-			response.GetMetadata().MediaType == latestedRevision.MediaType &&
-			response.GetMetadata().Size == latestedRevision.Size &&
-			response.GetMetadata().CreatedAt.AsTime().Equal(latestedRevision.CreatedAt)
+		actualMetadata := response.GetMetadata()
+		return actualMetadata.Extension == latestedRevision.Extension &&
+			actualMetadata.MediaType == latestedRevision.MediaType &&
+			actualMetadata.Size == latestedRevision.Size &&
+			actualMetadata.CreatedAt.AsTime().Equal(latestedRevision.CreatedAt)
 	})).Return(nil).Times(1)
 
 	actualFile := make([]byte, 0)

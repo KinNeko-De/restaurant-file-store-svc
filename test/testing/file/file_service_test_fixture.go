@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	"github.com/stretchr/testify/mock"
 )
@@ -36,6 +37,13 @@ func CreateChunkStoreFileRequest(t *testing.T, chunk []byte) *v1.StoreFileReques
 		},
 	}
 	return chunkRequest
+}
+
+func CreateDownloadFileRequest(t *testing.T, fileId *protobuf.Uuid) *v1.DownloadFileRequest {
+	request := &v1.DownloadFileRequest{
+		FileId: fileId,
+	}
+	return request
 }
 
 func CreateValidStoreFileStream(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
