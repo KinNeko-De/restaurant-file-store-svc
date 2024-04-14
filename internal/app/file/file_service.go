@@ -223,7 +223,6 @@ func getRequestedFileId(request *apiRestaurantFile.DownloadFileRequest) (uuid.UU
 	fileId, err := apiProtobuf.ToUuid(requested)
 	if err != nil {
 		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId '"+requested.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
-
 	}
 	return fileId, nil
 }
