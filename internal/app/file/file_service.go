@@ -196,7 +196,6 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 
 	err = sendFile(stream, requestedFileId, revision.Id, scopedLogger)
 	if err != nil {
-		scopedLogger.Err(err).Msg("error sending file")
 		return err
 	}
 
@@ -210,6 +209,7 @@ func fetchMetadata(ctx context.Context, requestedFileId uuid.UUID, scopedLogger 
 		return FileMetadata{}, status.Error(codes.NotFound, "file with id '"+requestedFileId.String()+"' not found.")
 	}
 	if err != nil {
+		scopedLogger.Err(err).Msg("error fetching file metadata")
 		return FileMetadata{}, status.Error(codes.Internal, "error fetching file metadata. please retry the request")
 	}
 	return fileMetadata, nil
