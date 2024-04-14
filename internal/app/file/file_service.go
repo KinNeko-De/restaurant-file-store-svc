@@ -230,9 +230,8 @@ func getRequestedFileId(request *apiRestaurantFile.DownloadFileRequest) (uuid.UU
 
 func sendFile(stream apiRestaurantFile.FileService_DownloadFileServer, requestedFileId uuid.UUID, revisionId uuid.UUID, scopedLogger zerolog.Logger) error {
 	fileReader, err := FileRepositoryInstance.ReadFile(stream.Context(), requestedFileId, revisionId)
-	if err != nil {
-		// TODO what happens if id is not found?
-		// TODO log error
+	if err != nil { // if the file is not found, we have an internal error in consistence of our data. that information should not be exposed to the client
+		scopedLogger.Err(err).Msg("error reading file")
 		return status.Error(codes.Internal, "error reading file. please retry the request")
 	}
 	err = sendChunks(fileReader, stream)
@@ -257,11 +256,14 @@ func sendChunks(fileReader io.ReadCloser, stream apiRestaurantFile.FileService_D
 		if err != nil {
 			return err
 		}
-		stream.Send(&apiRestaurantFile.DownloadFileResponse{
+		err = stream.Send(&apiRestaurantFile.DownloadFileResponse{
 			Part: &apiRestaurantFile.DownloadFileResponse_Chunk{
 				Chunk: maxSizeToRead[:readBytes],
 			},
 		})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
