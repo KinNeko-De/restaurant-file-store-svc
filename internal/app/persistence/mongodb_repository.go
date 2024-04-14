@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -22,10 +24,50 @@ func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, file
 
 	_, err := repository.collection.InsertOne(ctx, dataModel)
 	if err != nil {
-		return fmt.Errorf("failed to insert file metadata: %v", err)
+		return fmt.Errorf("failed to insert file metadata: %w", err)
 	}
 
 	return nil
+}
+
+func (repository *MongoDBRepository) FetchFileMetadata(ctx context.Context, fileId uuid.UUID) (file.FileMetadata, error) {
+	requestedId := fileId.String()
+	var dataModel fileMetadata
+	err := repository.collection.FindOne(ctx, bson.M{"_id": requestedId}).Decode(&dataModel)
+	if err != nil {
+		return file.FileMetadata{}, fmt.Errorf("failed to fetch file metadata: %w", err)
+	}
+
+	return fileMetadataToDomainModel(dataModel), nil
+}
+
+func (repository *MongoDBRepository) NotFoundError() error {
+	return mongo.ErrNoDocuments
+}
+
+func fileMetadataToDomainModel(dataModel fileMetadata) file.FileMetadata {
+	return file.FileMetadata{
+		Id:        uuid.MustParse(dataModel.Id),
+		Revisions: revisionsToDomainModel(dataModel.Revisions),
+	}
+}
+
+func revisionsToDomainModel(revision []revision) []file.Revision {
+	var domainModel []file.Revision
+	for _, revision := range revision {
+		domainModel = append(domainModel, revisionToDomainModel(revision))
+	}
+	return domainModel
+}
+
+func revisionToDomainModel(revision revision) file.Revision {
+	return file.Revision{
+		Id:        uuid.MustParse(revision.Id),
+		Extension: revision.Extension,
+		MediaType: revision.MediaType,
+		Size:      revision.Size,
+		CreatedAt: revision.CreatedAt,
+	}
 }
 
 func fileMetadataToDataModel(domainModel file.FileMetadata) fileMetadata {

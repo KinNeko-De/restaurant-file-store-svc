@@ -5,11 +5,12 @@ import (
 	"io"
 	"testing"
 
+	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	"github.com/stretchr/testify/mock"
 )
 
-func CreateFileStream(t *testing.T) *FileService_StoreFileServer {
+func CreateStoreFileStream(t *testing.T) *FileService_StoreFileServer {
 	mockStream := NewFileService_StoreFileServer(t)
 
 	ctx := context.Background()
@@ -18,32 +19,41 @@ func CreateFileStream(t *testing.T) *FileService_StoreFileServer {
 	return mockStream
 }
 
-func CreateMetadataRequest(t *testing.T, fileName string) *v1.StoreFileRequest {
+func CreateMetadataStoreFileRequest(t *testing.T, fileName string) *v1.StoreFileRequest {
 	metadata := &v1.StoreFileRequest{
-		File: &v1.StoreFileRequest_Name{
-			Name: fileName,
+		Part: &v1.StoreFileRequest_StoreFile{
+			StoreFile: &v1.StoreFile{
+				Name: fileName,
+			},
 		},
 	}
 	return metadata
 }
 
-func CreateChunkRequest(t *testing.T, chunk []byte) *v1.StoreFileRequest {
+func CreateChunkStoreFileRequest(t *testing.T, chunk []byte) *v1.StoreFileRequest {
 	chunkRequest := &v1.StoreFileRequest{
-		File: &v1.StoreFileRequest_Chunk{
+		Part: &v1.StoreFileRequest_Chunk{
 			Chunk: chunk,
 		},
 	}
 	return chunkRequest
 }
 
-func CreateValidFileStream(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
-	mockStream := CreateFileStream(t)
+func CreateDownloadFileRequest(t *testing.T, fileId *protobuf.Uuid) *v1.DownloadFileRequest {
+	request := &v1.DownloadFileRequest{
+		FileId: fileId,
+	}
+	return request
+}
 
-	metadata := CreateMetadataRequest(t, fileName)
+func CreateValidStoreFileStream(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
+	mockStream := CreateStoreFileStream(t)
+
+	metadata := CreateMetadataStoreFileRequest(t, fileName)
 	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
 
 	for _, chunk := range fileChunks {
-		chunkRequest := CreateChunkRequest(t, chunk)
+		chunkRequest := CreateChunkStoreFileRequest(t, chunk)
 		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
 	}
 
@@ -52,28 +62,28 @@ func CreateValidFileStream(t *testing.T, fileName string, fileChunks [][]byte) *
 	return mockStream
 }
 
-func CreateValidFileStreamThatAbortsOnFileWrite(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
-	mockStream := CreateFileStream(t)
+func CreateValidStoreFileStreamThatAbortsOnFileWrite(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
+	mockStream := CreateStoreFileStream(t)
 
-	metadata := CreateMetadataRequest(t, fileName)
+	metadata := CreateMetadataStoreFileRequest(t, fileName)
 	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
 
 	for _, chunk := range successfulWritenfileChunks {
-		chunkRequest := CreateChunkRequest(t, chunk)
+		chunkRequest := CreateChunkStoreFileRequest(t, chunk)
 		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
 	}
 
 	return mockStream
 }
 
-func CreateValidFileStreamThatAbortsOnFileClose(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
-	mockStream := CreateFileStream(t)
+func CreateValidStoreFileStreamThatAbortsOnFileClose(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
+	mockStream := CreateStoreFileStream(t)
 
-	metadata := CreateMetadataRequest(t, fileName)
+	metadata := CreateMetadataStoreFileRequest(t, fileName)
 	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
 
 	for _, chunk := range successfulWritenfileChunks {
-		chunkRequest := CreateChunkRequest(t, chunk)
+		chunkRequest := CreateChunkStoreFileRequest(t, chunk)
 		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
 	}
 
@@ -82,8 +92,17 @@ func CreateValidFileStreamThatAbortsOnFileClose(t *testing.T, fileName string, s
 	return mockStream
 }
 
-func SetupAndRecordSuccessfulResponse(t *testing.T, mockStream *FileService_StoreFileServer, actualResponse **v1.StoreFileResponse) {
+func SetupAndRecordSuccessfulStoreFileResponse(t *testing.T, mockStream *FileService_StoreFileServer, actualResponse **v1.StoreFileResponse) {
 	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
 		*actualResponse = response
 	}).Return(nil).Times(1)
+}
+
+func CreateDownloadFileStream(t *testing.T) *FileService_DownloadFileServer {
+	mockStream := NewFileService_DownloadFileServer(t)
+
+	ctx := context.Background()
+	mockStream.EXPECT().Context().Return(ctx).Maybe()
+
+	return mockStream
 }

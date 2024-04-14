@@ -13,4 +13,5 @@ var (
 
 type FileRepository interface {
 	CreateFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) (io.WriteCloser, error)
+	OpenFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) (io.ReadCloser, error)
 }

@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"testing"
 	"time"
 
@@ -18,10 +19,11 @@ import (
 )
 
 func TestStoreFile(t *testing.T) {
-	// TODO Extend test to also download the file
-
 	fileName := "test.txt"
+	expectedExtension := ".txt"
+	expectedMediaType := "text/plain; charset=utf-8"
 	sentFile := fixture.TextFile()
+	expectedSize := uint64(len(sentFile))
 	chunks := fixture.SplitIntoChunks(sentFile, 256)
 	startTime := time.Now()
 
@@ -31,27 +33,29 @@ func TestStoreFile(t *testing.T) {
 
 	client := apiRestaurantFile.NewFileServiceClient(conn)
 	ctx := context.Background()
-	stream, err := client.StoreFile(ctx)
-	require.Nil(t, err)
+	uploadStream, uploadErr := client.StoreFile(ctx)
+	require.Nil(t, uploadErr)
 
 	var metadata = &apiRestaurantFile.StoreFileRequest{
-		File: &apiRestaurantFile.StoreFileRequest_Name{
-			Name: fileName,
+		Part: &apiRestaurantFile.StoreFileRequest_StoreFile{
+			StoreFile: &apiRestaurantFile.StoreFile{
+				Name: fileName,
+			},
 		},
 	}
-	stream.Send(metadata)
+	uploadStream.Send(metadata)
 
 	for _, chunk := range chunks {
 		var chunkRequest = &apiRestaurantFile.StoreFileRequest{
-			File: &apiRestaurantFile.StoreFileRequest_Chunk{
+			Part: &apiRestaurantFile.StoreFileRequest_Chunk{
 				Chunk: chunk,
 			},
 		}
-		stream.Send(chunkRequest)
+		uploadStream.Send(chunkRequest)
 	}
 
-	actualResponse, err := stream.CloseAndRecv()
-	require.Nil(t, err)
+	actualResponse, uploadErr := uploadStream.CloseAndRecv()
+	require.Nil(t, uploadErr)
 	duration := time.Since(startTime)
 	t.Logf("Call duration: %s", duration)
 
@@ -62,4 +66,41 @@ func TestStoreFile(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.Id)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.RevisionId)
+
+	downloadStream, downloadErr := client.DownloadFile(ctx, &apiRestaurantFile.DownloadFileRequest{
+		FileId: actualResponse.StoredFile.Id,
+	})
+
+	require.Nil(t, downloadErr)
+	require.NotNil(t, downloadStream)
+
+	downloadResponse, err := downloadStream.Recv()
+	require.Nil(t, err)
+	require.NotNil(t, downloadResponse)
+
+	downloadMetadata := downloadResponse.GetMetadata()
+
+	require.NotNil(t, downloadMetadata)
+	assert.NotNil(t, downloadMetadata.CreatedAt)
+	assert.WithinDuration(t, actualResponse.StoredFileMetadata.CreatedAt.AsTime(), downloadMetadata.CreatedAt.AsTime(), time.Millisecond)
+	assert.Equal(t, expectedExtension, downloadMetadata.Extension)
+	assert.Equal(t, actualResponse.StoredFileMetadata.Extension, downloadMetadata.Extension)
+	assert.Equal(t, expectedMediaType, downloadMetadata.MediaType)
+	assert.Equal(t, actualResponse.StoredFileMetadata.MediaType, downloadMetadata.MediaType)
+	assert.Equal(t, expectedSize, downloadMetadata.Size)
+	assert.Equal(t, actualResponse.StoredFileMetadata.Size, downloadMetadata.Size)
+
+	var receivedFile []byte
+	for {
+		downloadResponse, err := downloadStream.Recv()
+		if err == io.EOF {
+			break
+		}
+		require.Nil(t, err)
+		chunk := downloadResponse.GetChunk()
+		require.NotNil(t, chunk)
+		receivedFile = append(receivedFile, chunk...)
+	}
+
+	assert.Equal(t, sentFile, receivedFile)
 }

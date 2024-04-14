@@ -5,6 +5,7 @@ package file
 import (
 	context "context"
 
+	uuid "github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -19,6 +20,108 @@ type MockFileMetadataRepository_Expecter struct {
 
 func (_m *MockFileMetadataRepository) EXPECT() *MockFileMetadataRepository_Expecter {
 	return &MockFileMetadataRepository_Expecter{mock: &_m.Mock}
+}
+
+// FetchFileMetadata provides a mock function with given fields: ctx, fileId
+func (_m *MockFileMetadataRepository) FetchFileMetadata(ctx context.Context, fileId uuid.UUID) (FileMetadata, error) {
+	ret := _m.Called(ctx, fileId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchFileMetadata")
+	}
+
+	var r0 FileMetadata
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (FileMetadata, error)); ok {
+		return rf(ctx, fileId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) FileMetadata); ok {
+		r0 = rf(ctx, fileId)
+	} else {
+		r0 = ret.Get(0).(FileMetadata)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, fileId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFileMetadataRepository_FetchFileMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FetchFileMetadata'
+type MockFileMetadataRepository_FetchFileMetadata_Call struct {
+	*mock.Call
+}
+
+// FetchFileMetadata is a helper method to define mock.On call
+//   - ctx context.Context
+//   - fileId uuid.UUID
+func (_e *MockFileMetadataRepository_Expecter) FetchFileMetadata(ctx interface{}, fileId interface{}) *MockFileMetadataRepository_FetchFileMetadata_Call {
+	return &MockFileMetadataRepository_FetchFileMetadata_Call{Call: _e.mock.On("FetchFileMetadata", ctx, fileId)}
+}
+
+func (_c *MockFileMetadataRepository_FetchFileMetadata_Call) Run(run func(ctx context.Context, fileId uuid.UUID)) *MockFileMetadataRepository_FetchFileMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockFileMetadataRepository_FetchFileMetadata_Call) Return(_a0 FileMetadata, _a1 error) *MockFileMetadataRepository_FetchFileMetadata_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockFileMetadataRepository_FetchFileMetadata_Call) RunAndReturn(run func(context.Context, uuid.UUID) (FileMetadata, error)) *MockFileMetadataRepository_FetchFileMetadata_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NotFoundError provides a mock function with given fields:
+func (_m *MockFileMetadataRepository) NotFoundError() error {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for NotFoundError")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFileMetadataRepository_NotFoundError_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NotFoundError'
+type MockFileMetadataRepository_NotFoundError_Call struct {
+	*mock.Call
+}
+
+// NotFoundError is a helper method to define mock.On call
+func (_e *MockFileMetadataRepository_Expecter) NotFoundError() *MockFileMetadataRepository_NotFoundError_Call {
+	return &MockFileMetadataRepository_NotFoundError_Call{Call: _e.mock.On("NotFoundError")}
+}
+
+func (_c *MockFileMetadataRepository_NotFoundError_Call) Run(run func()) *MockFileMetadataRepository_NotFoundError_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFileMetadataRepository_NotFoundError_Call) Return(_a0 error) *MockFileMetadataRepository_NotFoundError_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFileMetadataRepository_NotFoundError_Call) RunAndReturn(run func() error) *MockFileMetadataRepository_NotFoundError_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // StoreFileMetadata provides a mock function with given fields: ctx, fileMetadata
