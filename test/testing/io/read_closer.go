@@ -9,6 +9,12 @@ import (
 
 func CreateReadCloser(t *testing.T, readFile []byte) *MockReadCloser {
 	fileReader := &MockReadCloser{}
+	setupReadOfFile(fileReader, readFile)
+	fileReader.EXPECT().Close().Return(nil).Times(1)
+	return fileReader
+}
+
+func setupReadOfFile(fileReader *MockReadCloser, readFile []byte) {
 	readIndex := 0
 	fileReader.EXPECT().Read(mock.Anything).RunAndReturn(func(data []byte) (int, error) {
 		if readIndex >= len(readFile) {
@@ -22,6 +28,17 @@ func CreateReadCloser(t *testing.T, readFile []byte) *MockReadCloser {
 		readIndex = endbytes
 		return bytesToRead, nil
 	})
-	fileReader.EXPECT().Close().Return(nil).Times(1)
+}
+
+func CreateReadCloserRanIntoReadError(t *testing.T, errorAfterSuccessfulRead error) *MockReadCloser {
+	fileReader := &MockReadCloser{}
+	fileReader.EXPECT().Read(mock.Anything).Return(0, errorAfterSuccessfulRead).Times(1)
+	return fileReader
+}
+
+func CreateReadCloserRanIntoCloseError(t *testing.T, readFile []byte, closeErr error) *MockReadCloser {
+	fileReader := &MockReadCloser{}
+	setupReadOfFile(fileReader, readFile)
+	fileReader.EXPECT().Close().Return(closeErr).Times(1)
 	return fileReader
 }

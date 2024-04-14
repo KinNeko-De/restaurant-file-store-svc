@@ -485,6 +485,43 @@ func TestDownloadFile_SendMetadataFails(t *testing.T) {
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 }
 
+func TestDownloadFile_FindingTheFileBytesFails(t *testing.T) {
+	fileId := uuid.New()
+	revisionId := uuid.New()
+	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
+	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	openErr := errors.New("open error because file disapperred most likey due someone fuckeled around manually")
+
+	fileMetadata := FileMetadata{
+		Id: fileId,
+		Revisions: []Revision{
+			{
+				Id:        revisionId,
+				Extension: ".txt",
+				MediaType: "text/plain; charset=utf-8",
+				Size:      1024,
+				CreatedAt: time.Now().UTC(),
+			},
+		},
+	}
+
+	mockStream := fixture.CreateDownloadFileStream(t)
+	mockFileMetadataRepository := &MockFileMetadataRepository{}
+	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
+	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1) // metadata are sent
+	mockFileRepository := &MockFileRepository{}
+	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, revisionId).Return(nil, openErr).Times(1)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.DownloadFile(request, mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	require.True(t, ok, "Expected a gRPC status error")
+	require.NotNil(t, actualStatus)
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+}
+
 func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
@@ -510,7 +547,8 @@ func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
 	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1) // metadata are sent
 	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, revisionId).Return(nil, readErr).Times(1)
+	readCloser := ioFixture.CreateReadCloserRanIntoReadError(t, readErr)
+	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, revisionId).Return(readCloser, nil).Times(1)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.DownloadFile(request, mockStream)
@@ -520,6 +558,46 @@ func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 	require.True(t, ok, "Expected a gRPC status error")
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.Internal, actualStatus.Code())
+}
+
+func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *testing.T) {
+	fileId := uuid.New()
+	revisionId := uuid.New()
+	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
+	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	file := fixture.TextFile()
+	closeErr := errors.New("close error due to network connection as example")
+
+	fileMetadata := FileMetadata{
+		Id: fileId,
+		Revisions: []Revision{
+			{
+				Id:        revisionId,
+				Extension: ".txt",
+				MediaType: "text/plain; charset=utf-8",
+				Size:      1024,
+				CreatedAt: time.Now().UTC(),
+			},
+		},
+	}
+
+	mockStream := fixture.CreateDownloadFileStream(t)
+	mockFileMetadataRepository := &MockFileMetadataRepository{}
+	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
+	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1) // metadata are sent
+	mockFileRepository := &MockFileRepository{}
+	readCloser := ioFixture.CreateReadCloserRanIntoCloseError(t, file, closeErr)
+	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, revisionId).Return(readCloser, nil).Times(1)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualFile := make([]byte, 0)
+	mockStream.EXPECT().Send(mock.Anything).Run(func(response *v1.DownloadFileResponse) {
+		actualFile = append(actualFile, response.GetChunk()...)
+	}).Return(nil)
+	actualError := sut.DownloadFile(request, mockStream)
+
+	assert.Nil(t, actualError)
+	assert.Equal(t, file, actualFile)
 }
 
 func TestDownloadFile_SendFileBytesFails(t *testing.T) {
