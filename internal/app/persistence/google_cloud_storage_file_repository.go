@@ -22,7 +22,7 @@ func (g *GoogleCloudStorageFileRepository) CreateFile(ctx context.Context, fileI
 	return writer, nil
 }
 
-func (g *GoogleCloudStorageFileRepository) ReadFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) (io.ReadCloser, error) {
+func (g *GoogleCloudStorageFileRepository) OpenFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) (io.ReadCloser, error) {
 	bucket := g.Client.Bucket("kinneko-de")
 	objectname := fileId.String() + "/" + revisionId.String()
 	object := bucket.Object(objectname)

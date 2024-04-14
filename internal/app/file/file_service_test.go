@@ -510,7 +510,7 @@ func TestDownloadFile_FindingTheFileBytesFails(t *testing.T) {
 	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
 	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1) // metadata are sent
 	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, revisionId).Return(nil, openErr).Times(1)
+	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(nil, openErr).Times(1)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.DownloadFile(request, mockStream)
@@ -548,7 +548,7 @@ func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1) // metadata are sent
 	mockFileRepository := &MockFileRepository{}
 	readCloser := ioFixture.CreateReadCloserRanIntoReadError(t, readErr)
-	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, revisionId).Return(readCloser, nil).Times(1)
+	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(readCloser, nil).Times(1)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.DownloadFile(request, mockStream)
@@ -587,7 +587,7 @@ func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *tes
 	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1) // metadata are sent
 	mockFileRepository := &MockFileRepository{}
 	readCloser := ioFixture.CreateReadCloserRanIntoCloseError(t, file, closeErr)
-	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, revisionId).Return(readCloser, nil).Times(1)
+	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(readCloser, nil).Times(1)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualFile := make([]byte, 0)
@@ -628,7 +628,7 @@ func TestDownloadFile_SendFileBytesFails(t *testing.T) {
 	mockStream.EXPECT().Send(mock.Anything).Return(sendErr).Times(1) // file bytes are sent
 	mockFileRepository := &MockFileRepository{}
 	mockReader := ioFixture.CreateReadCloser(t, file)
-	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, revisionId).Return(mockReader, nil).Times(1)
+	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(mockReader, nil).Times(1)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.DownloadFile(request, mockStream)
@@ -671,7 +671,7 @@ func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *tes
 	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
 	mockFileRepository := &MockFileRepository{}
 	mockReader := ioFixture.CreateReadCloser(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc)
-	mockFileRepository.EXPECT().ReadFile(mock.Anything, fileId, latestedRevision.Id).Return(mockReader, nil).Times(1)
+	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, latestedRevision.Id).Return(mockReader, nil).Times(1)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	mockStream := fixture.CreateDownloadFileStream(t)

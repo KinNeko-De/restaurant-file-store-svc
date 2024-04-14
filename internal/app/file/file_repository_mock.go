@@ -84,12 +84,12 @@ func (_c *MockFileRepository_CreateFile_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// ReadFile provides a mock function with given fields: ctx, fileId, revisionId
-func (_m *MockFileRepository) ReadFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) (io.ReadCloser, error) {
+// OpenFile provides a mock function with given fields: ctx, fileId, revisionId
+func (_m *MockFileRepository) OpenFile(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) (io.ReadCloser, error) {
 	ret := _m.Called(ctx, fileId, revisionId)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ReadFile")
+		panic("no return value specified for OpenFile")
 	}
 
 	var r0 io.ReadCloser
@@ -114,32 +114,32 @@ func (_m *MockFileRepository) ReadFile(ctx context.Context, fileId uuid.UUID, re
 	return r0, r1
 }
 
-// MockFileRepository_ReadFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadFile'
-type MockFileRepository_ReadFile_Call struct {
+// MockFileRepository_OpenFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OpenFile'
+type MockFileRepository_OpenFile_Call struct {
 	*mock.Call
 }
 
-// ReadFile is a helper method to define mock.On call
+// OpenFile is a helper method to define mock.On call
 //   - ctx context.Context
 //   - fileId uuid.UUID
 //   - revisionId uuid.UUID
-func (_e *MockFileRepository_Expecter) ReadFile(ctx interface{}, fileId interface{}, revisionId interface{}) *MockFileRepository_ReadFile_Call {
-	return &MockFileRepository_ReadFile_Call{Call: _e.mock.On("ReadFile", ctx, fileId, revisionId)}
+func (_e *MockFileRepository_Expecter) OpenFile(ctx interface{}, fileId interface{}, revisionId interface{}) *MockFileRepository_OpenFile_Call {
+	return &MockFileRepository_OpenFile_Call{Call: _e.mock.On("OpenFile", ctx, fileId, revisionId)}
 }
 
-func (_c *MockFileRepository_ReadFile_Call) Run(run func(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID)) *MockFileRepository_ReadFile_Call {
+func (_c *MockFileRepository_OpenFile_Call) Run(run func(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID)) *MockFileRepository_OpenFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(uuid.UUID))
 	})
 	return _c
 }
 
-func (_c *MockFileRepository_ReadFile_Call) Return(_a0 io.ReadCloser, _a1 error) *MockFileRepository_ReadFile_Call {
+func (_c *MockFileRepository_OpenFile_Call) Return(_a0 io.ReadCloser, _a1 error) *MockFileRepository_OpenFile_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockFileRepository_ReadFile_Call) RunAndReturn(run func(context.Context, uuid.UUID, uuid.UUID) (io.ReadCloser, error)) *MockFileRepository_ReadFile_Call {
+func (_c *MockFileRepository_OpenFile_Call) RunAndReturn(run func(context.Context, uuid.UUID, uuid.UUID) (io.ReadCloser, error)) *MockFileRepository_OpenFile_Call {
 	_c.Call.Return(run)
 	return _c
 }

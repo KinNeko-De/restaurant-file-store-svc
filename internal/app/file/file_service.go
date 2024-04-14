@@ -229,7 +229,7 @@ func getRequestedFileId(request *apiRestaurantFile.DownloadFileRequest) (uuid.UU
 }
 
 func sendFile(stream apiRestaurantFile.FileService_DownloadFileServer, requestedFileId uuid.UUID, revisionId uuid.UUID, scopedLogger zerolog.Logger) error {
-	fileReader, err := FileRepositoryInstance.ReadFile(stream.Context(), requestedFileId, revisionId)
+	fileReader, err := FileRepositoryInstance.OpenFile(stream.Context(), requestedFileId, revisionId)
 	if err != nil { // if the file is not found, we have an internal error in consistence of our data. that information should not be exposed to the client
 		scopedLogger.Err(err).Msg("error reading file")
 		return status.Error(codes.Internal, "error reading file. please retry the request")
