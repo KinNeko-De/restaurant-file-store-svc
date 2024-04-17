@@ -132,7 +132,7 @@ func TestStoreRevision_ARevisionIsAddedToAFile(t *testing.T) {
 		Extension: ".md",
 		MediaType: "text/plain; charset=utf-8",
 		Size:      1069,
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: time.Now().UTC().Round(time.Millisecond),
 	}
 
 	expectedFileMetadata := file.FileMetadata{
