@@ -19,12 +19,40 @@ type MongoDBRepository struct {
 	collection *mongo.Collection
 }
 
+type fileMetadata struct {
+	Id        string `bson:"_id"`
+	Revisions []revision
+}
+
+type revision struct {
+	Id        string `bson:"_id"`
+	Extension string
+	MediaType string
+	Size      uint64
+	CreatedAt time.Time
+}
+
 func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, fileMetadata file.FileMetadata) error {
 	dataModel := fileMetadataToDataModel(fileMetadata)
 
 	_, err := repository.collection.InsertOne(ctx, dataModel)
 	if err != nil {
 		return fmt.Errorf("failed to insert file metadata: %w", err)
+	}
+
+	return nil
+}
+
+func (repository *MongoDBRepository) StoreRevision(ctx context.Context, fileId uuid.UUID, revision file.Revision) error {
+	requestedId := fileId.String()
+	dataModel := revisionToDataModel(revision)
+
+	result, err := repository.collection.UpdateOne(ctx, bson.M{"_id": requestedId}, bson.M{"$push": bson.M{"revisions": dataModel}})
+	if err != nil {
+		return fmt.Errorf("failed to insert revision: %w", err)
+	}
+	if result.MatchedCount == 0 {
+		return fmt.Errorf("file metadata not found")
 	}
 
 	return nil
@@ -93,19 +121,6 @@ func revisionToDataModel(domainModel file.Revision) revision {
 		Size:      domainModel.Size,
 		CreatedAt: domainModel.CreatedAt,
 	}
-}
-
-type fileMetadata struct {
-	Id        string `bson:"_id"`
-	Revisions []revision
-}
-
-type revision struct {
-	Id        string `bson:"_id"`
-	Extension string
-	MediaType string
-	Size      uint64
-	CreatedAt time.Time
 }
 
 func CreateMongoDBClient(ctx context.Context, config MongoDBConfig) (*mongo.Client, error) {
