@@ -175,7 +175,7 @@ func TestFetchFileMetadata_FileDoesNotExists(t *testing.T) {
 
 	_, actualError := sut.FetchFileMetadata(ctx, fileId)
 	require.NotNil(t, actualError)
-	assert.True(t, errors.Is(actualError, ErrNoMatch))
+	assert.True(t, errors.Is(actualError, mongo.ErrNoDocuments))
 }
 
 func TestStoreRevision_FileDoesNotExists(t *testing.T) {
@@ -200,7 +200,7 @@ func TestStoreRevision_FileDoesNotExists(t *testing.T) {
 
 	actualError := sut.StoreRevision(ctx, fileId, revision)
 	require.NotNil(t, actualError)
-	assert.True(t, errors.Is(actualError, mongo.ErrNoDocuments))
+	assert.True(t, errors.Is(actualError, ErrNoMatch))
 }
 
 func assertDatamodeEqual(t *testing.T, expectedFileMetadata fileMetadata, actualFileMetadata fileMetadata) {
