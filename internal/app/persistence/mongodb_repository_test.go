@@ -61,7 +61,7 @@ func TestStoreFileMetadata(t *testing.T) {
 	var actualFileMetadata fileMetadata
 	err = sut.collection.FindOne(ctx, bson.M{"_id": input.Id.String()}).Decode(&actualFileMetadata)
 	require.Nil(t, err)
-	assertFileMetadataEqual(t, expectedFileMetadata, actualFileMetadata)
+	assertDatamodeEqual(t, expectedFileMetadata, actualFileMetadata)
 }
 
 func TestFetchFileMetadata(t *testing.T) {
@@ -111,6 +111,55 @@ func TestFetchFileMetadata(t *testing.T) {
 	assert.Equal(t, expectedFileMetadata, actualFileMetadata)
 }
 
+func TestStoreRevision_ARevisionIsAddedToAFile(t *testing.T) {
+	fileId := uuid.New()
+	storedRevision := file.Revision{
+		Id:        uuid.New(),
+		Extension: ".txt",
+		MediaType: "text/plain",
+		Size:      1024,
+		CreatedAt: time.Now().UTC().Add(-time.Hour).Round(time.Millisecond),
+	}
+	storedFileMetadata := file.FileMetadata{
+		Id: fileId,
+		Revisions: []file.Revision{
+			storedRevision,
+		},
+	}
+
+	newRevsion := file.Revision{
+		Id:        uuid.New(),
+		Extension: ".md",
+		MediaType: "text/plain; charset=utf-8",
+		Size:      1069,
+		CreatedAt: time.Now().UTC().Round(time.Millisecond),
+	}
+
+	expectedFileMetadata := file.FileMetadata{
+		Id: fileId,
+		Revisions: []file.Revision{
+			storedRevision,
+			newRevsion,
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongodb.MongoDbServer))
+	require.Nil(t, err)
+	sut, err := NewMongoDBRepository(ctx, client, uuid.NewString(), t.Name()+uuid.NewString())
+	require.Nil(t, err)
+	defer tearDown(t, sut.collection)
+
+	err = sut.StoreFileMetadata(ctx, storedFileMetadata)
+	require.Nil(t, err)
+	err = sut.StoreRevision(ctx, fileId, newRevsion)
+	require.Nil(t, err)
+	actualFileMetadata, err := sut.FetchFileMetadata(ctx, fileId)
+	require.Nil(t, err)
+	assert.Equal(t, expectedFileMetadata, actualFileMetadata)
+}
+
 func TestFetchFileMetadata_FileDoesNotExists(t *testing.T) {
 	fileId := uuid.New()
 
@@ -129,7 +178,32 @@ func TestFetchFileMetadata_FileDoesNotExists(t *testing.T) {
 	assert.True(t, errors.Is(actualError, mongo.ErrNoDocuments))
 }
 
-func assertFileMetadataEqual(t *testing.T, expectedFileMetadata fileMetadata, actualFileMetadata fileMetadata) {
+func TestStoreRevision_FileDoesNotExists(t *testing.T) {
+	fileId := uuid.New()
+	revision := file.Revision{
+		Id:        uuid.New(),
+		Extension: ".txt",
+		MediaType: "text/plain",
+		Size:      1024,
+		CreatedAt: time.Now().UTC().Round(time.Millisecond),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongodb.MongoDbServer))
+	require.Nil(t, err)
+	defer disconnectClient(ctx, client)
+
+	sut, err := NewMongoDBRepository(ctx, client, uuid.NewString(), t.Name()+uuid.NewString())
+	require.Nil(t, err)
+	defer tearDown(t, sut.collection)
+
+	actualError := sut.StoreRevision(ctx, fileId, revision)
+	require.NotNil(t, actualError)
+	assert.True(t, errors.Is(actualError, ErrNoMatch))
+}
+
+func assertDatamodeEqual(t *testing.T, expectedFileMetadata fileMetadata, actualFileMetadata fileMetadata) {
 	assert.Equal(t, expectedFileMetadata.Id, actualFileMetadata.Id)
 	for i := range expectedFileMetadata.Revisions {
 		assertRevisionsEqual(t, expectedFileMetadata.Revisions[i], actualFileMetadata.Revisions[i])
