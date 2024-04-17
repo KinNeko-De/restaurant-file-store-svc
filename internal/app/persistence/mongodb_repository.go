@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -32,6 +33,16 @@ type revision struct {
 	CreatedAt time.Time
 }
 
+var ErrNoMatch = errors.New("no matching documents")
+
+func (repository *MongoDBRepository) NotFoundError() error {
+	return mongo.ErrNoDocuments
+}
+
+func (repository *MongoDBRepository) NoMatchError() error {
+	return ErrNoMatch
+}
+
 func (repository *MongoDBRepository) StoreFileMetadata(ctx context.Context, fileMetadata file.FileMetadata) error {
 	dataModel := fileMetadataToDataModel(fileMetadata)
 
@@ -52,7 +63,7 @@ func (repository *MongoDBRepository) StoreRevision(ctx context.Context, fileId u
 		return fmt.Errorf("failed to insert revision: %w", err)
 	}
 	if result.MatchedCount == 0 {
-		return fmt.Errorf("file metadata not found")
+		return fmt.Errorf("fileId '%v' not found: %w", requestedId, ErrNoMatch)
 	}
 
 	return nil
@@ -67,10 +78,6 @@ func (repository *MongoDBRepository) FetchFileMetadata(ctx context.Context, file
 	}
 
 	return fileMetadataToDomainModel(dataModel), nil
-}
-
-func (repository *MongoDBRepository) NotFoundError() error {
-	return mongo.ErrNoDocuments
 }
 
 func fileMetadataToDomainModel(dataModel fileMetadata) file.FileMetadata {

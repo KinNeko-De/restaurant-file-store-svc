@@ -175,6 +175,31 @@ func TestFetchFileMetadata_FileDoesNotExists(t *testing.T) {
 
 	_, actualError := sut.FetchFileMetadata(ctx, fileId)
 	require.NotNil(t, actualError)
+	assert.True(t, errors.Is(actualError, ErrNoMatch))
+}
+
+func TestStoreRevision_FileDoesNotExists(t *testing.T) {
+	fileId := uuid.New()
+	revision := file.Revision{
+		Id:        uuid.New(),
+		Extension: ".txt",
+		MediaType: "text/plain",
+		Size:      1024,
+		CreatedAt: time.Now().UTC().Round(time.Millisecond),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongodb.MongoDbServer))
+	require.Nil(t, err)
+	defer disconnectClient(ctx, client)
+
+	sut, err := NewMongoDBRepository(ctx, client, uuid.NewString(), t.Name()+uuid.NewString())
+	require.Nil(t, err)
+	defer tearDown(t, sut.collection)
+
+	actualError := sut.StoreRevision(ctx, fileId, revision)
+	require.NotNil(t, actualError)
 	assert.True(t, errors.Is(actualError, mongo.ErrNoDocuments))
 }
 
