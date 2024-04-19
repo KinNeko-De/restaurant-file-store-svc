@@ -344,6 +344,32 @@ func TestStoreFile_FileClosingError_RetryRequested(t *testing.T) {
 	assert.Nil(t, storedFileMetadata)
 }
 
+func TestStoreFile_StoreFileMetadataThrowsError_RetryRequested(t *testing.T) {
+	err := errors.New("Error contains possible sensitive information")
+	sentFile := fixture.TextFile()
+	sentFileName := "test.txt"
+
+	var generatedFileId *uuid.UUID
+	var generatedRevisionId *uuid.UUID
+	var storedFileMetadata *FileMetadata
+	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
+	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
+	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
+	mockFileMetadataRepository := &MockFileMetadataRepository{}
+	setupFileMetadataRepositoryMockStoreFileMetadataReturnsError(t, mockFileMetadataRepository, err)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreFile(mockStream)
+
+	assert.NotNil(t, actualError)
+	assert.False(t, errors.Is(actualError, err), "Error should not be passed to the client")
+	actualStatus, ok := status.FromError(actualError)
+	assert.True(t, ok, "Expected a gRPC status error")
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), "retry")
+	assert.Nil(t, storedFileMetadata)
+}
+
 func TestDownloadFile_FileIdIsNil(t *testing.T) {
 	request := &v1.DownloadFileRequest{
 		FileId: nil,
@@ -721,6 +747,15 @@ func createFileMetadataRepositoryMock(t *testing.T, storedFileMetadata **FileMet
 	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(FileMetadata{})).
 		Run(func(ctx context.Context, fileMetadata FileMetadata) { *storedFileMetadata = &fileMetadata }).
 		Return(nil).
+		Times(1)
+
+	return mockFileMetadataRepository
+}
+
+func setupFileMetadataRepositoryMockStoreFileMetadataReturnsError(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, err error) *MockFileMetadataRepository {
+	t.Helper()
+	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(FileMetadata{})).
+		Return(err).
 		Times(1)
 
 	return mockFileMetadataRepository
