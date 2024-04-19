@@ -20,38 +20,6 @@ type FileServiceServer struct {
 	apiRestaurantFile.UnimplementedFileServiceServer
 }
 
-// StoreRevision implements v1.FileServiceServer.
-func (s *FileServiceServer) StoreRevision(stream apiRestaurantFile.FileService_StoreRevisionServer) error {
-	storeRevision, err := receiveRevisionMetadata(stream)
-	if err != nil {
-		return err
-	}
-
-	fileId, err := getFileId(storeRevision)
-	if err != nil {
-		return err
-	}
-
-	createdFileMetadata, err := createFile2(stream, fileId, storeRevision.StoreFile.Name)
-	if err != nil {
-		return err
-	}
-
-	response, err := createStoreFileResponse(createdFileMetadata)
-	if err != nil {
-		logger.Logger.Err(err).Msg("failed to to create response")
-		return status.Error(codes.Internal, "failed to create response. please retry the request")
-	}
-
-	err = stream.SendAndClose(response)
-	if err != nil {
-		logger.Logger.Err(err).Msg("failed to send response")
-		return status.Error(codes.Internal, "failed to send response. please retry the request")
-	}
-
-	return nil
-}
-
 func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_StoreFileServer) error {
 	storeFile, err := receiveMetadata(stream)
 	if err != nil {
@@ -78,11 +46,42 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	return nil
 }
 
+func (s *FileServiceServer) StoreRevision(stream apiRestaurantFile.FileService_StoreRevisionServer) error {
+	storeRevision, err := receiveRevisionMetadata(stream)
+	if err != nil {
+		return err
+	}
+
+	fileId, err := getFileId(storeRevision)
+	if err != nil {
+		return err
+	}
+
+	createdFileMetadata, err := createRevision(stream, fileId, storeRevision.StoreFile.Name)
+	if err != nil {
+		return err
+	}
+
+	response, err := createStoreFileResponse(createdFileMetadata)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to to create response")
+		return status.Error(codes.Internal, "failed to create response. please retry the request")
+	}
+
+	err = stream.SendAndClose(response)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to send response")
+		return status.Error(codes.Internal, "failed to send response. please retry the request")
+	}
+
+	return nil
+}
+
 func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName string) (*FileMetadata, error) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
 
-	totalFileSize, sniff, err := writeFile(stream, fileId, revisionId)
+	totalFileSize, sniff, err := writeFile(&StreamWrapper{stream}, stream.Context(), fileId, revisionId)
 	if err != nil {
 		return nil, err
 	}
@@ -99,10 +98,10 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 	return &createdFileMetadata, err
 }
 
-func createFile2(stream apiRestaurantFile.FileService_StoreRevisionServer, fileId uuid.UUID, fileName string) (*FileMetadata, error) {
+func createRevision(stream apiRestaurantFile.FileService_StoreRevisionServer, fileId uuid.UUID, fileName string) (*FileMetadata, error) {
 	revisionId := uuid.New()
 
-	totalFileSize, sniff, err := writeFile2(stream, fileId, revisionId)
+	totalFileSize, sniff, err := writeFile(&StreamWrapper2{stream}, stream.Context(), fileId, revisionId)
 	if err != nil {
 		return nil, err
 	}

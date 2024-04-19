@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func receiveChunks(stream apiRestaurantFile.FileService_StoreFileServer, f io.WriteCloser) (uint64, []byte, error) {
+func receiveChunks(stream ChunckStream, f io.WriteCloser) (uint64, []byte, error) {
 	var totalFileSize uint64 = 0
 	var sniffByteCount uint64 = 0
 	sniff := make([]byte, sniffSize)
@@ -45,7 +45,7 @@ func receiveChunks2(stream apiRestaurantFile.FileService_StoreRevisionServer, f 
 	var sniffByteCount uint64 = 0
 	sniff := make([]byte, sniffSize)
 	for {
-		finished, chunk, err := receiveChunk2(stream)
+		finished, chunk, err := receiveChunk(StreamWrapper2{stream: stream})
 		if err != nil {
 			return 0, nil, err
 		}
@@ -93,12 +93,12 @@ func receiveRevisionMetadata(stream apiRestaurantFile.FileService_StoreRevisionS
 
 	msg := firstRequest.GetStoreRevision()
 	if msg == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreRevisionRequest_StoreRevision' expected. Actual value is "+reflect.TypeOf(firstRequest.Part).String()+".")
+		return nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreRevisionRequest_StoreRevision' expected. Actual value is.")
 	}
 	return msg, nil
 }
 
-func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, []byte, error) {
+func receiveChunk(stream ChunckStream) (bool, []byte, error) {
 	request, err := stream.Recv()
 	if err == io.EOF {
 		return true, nil, nil
@@ -110,9 +110,51 @@ func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, [
 
 	msg := request.GetChunk()
 	if msg == nil {
-		return false, nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreFileRequest_Chunk' expected. Actual value is "+reflect.TypeOf(request.Part).String()+".")
+		return false, nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreFileRequest_Chunk' expected. Actual value is.")
 	}
 	return false, msg, nil
+}
+
+type ChunckRequest interface {
+	GetChunk() []byte
+}
+
+type Wrapper struct {
+	request *apiRestaurantFile.StoreFileRequest
+}
+
+func (w Wrapper) GetChunk() []byte {
+	return w.request.GetChunk()
+}
+
+type Wrapper2 struct {
+	request *apiRestaurantFile.StoreRevisionRequest
+}
+
+func (w Wrapper2) GetChunk() []byte {
+	return w.request.GetChunk()
+}
+
+type ChunckStream interface {
+	Recv() (ChunckRequest, error)
+}
+
+type StreamWrapper struct {
+	stream apiRestaurantFile.FileService_StoreFileServer
+}
+
+func (s StreamWrapper) Recv() (ChunckRequest, error) {
+	request, err := s.stream.Recv()
+	return Wrapper{request: request}, err
+}
+
+type StreamWrapper2 struct {
+	stream apiRestaurantFile.FileService_StoreRevisionServer
+}
+
+func (s StreamWrapper2) Recv() (ChunckRequest, error) {
+	request, err := s.stream.Recv()
+	return Wrapper2{request: request}, err
 }
 
 func receiveChunk2(stream apiRestaurantFile.FileService_StoreRevisionServer) (bool, []byte, error) {
