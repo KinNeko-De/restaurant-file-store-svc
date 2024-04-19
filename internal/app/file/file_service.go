@@ -1,6 +1,8 @@
 package file
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
@@ -89,6 +91,11 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 	createdFileMetadata := newFileMetadata(fileId, createdRevision)
 
 	err = FileMetadataRepositoryInstance.StoreFileMetadata(stream.Context(), createdFileMetadata)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to store file metadata")
+		return nil, status.Error(codes.Internal, "failed to store file metadata. please retry the request")
+	}
+
 	return &createdFileMetadata, err
 }
 
@@ -101,9 +108,16 @@ func createFile2(stream apiRestaurantFile.FileService_StoreRevisionServer, fileI
 	}
 
 	createdRevision := newRevision(revisionId, fileName, totalFileSize, sniff)
-	createdFileMetadata := newFileMetadata(fileId, createdRevision)
+	err = FileMetadataRepositoryInstance.StoreRevision(stream.Context(), fileId, createdRevision)
+	if err != nil {
+		if errors.Is(err, FileMetadataRepositoryInstance.NoMatchError()) {
+			return nil, status.Error(codes.NotFound, "file with id '"+fileId.String()+"' not found.")
+		}
+		logger.Logger.Err(err).Msg("failed to store revision metadata")
+		return nil, status.Error(codes.Internal, "failed to store file metadata. please retry the request")
+	}
 
-	err = FileMetadataRepositoryInstance.StoreFileMetadata(stream.Context(), createdFileMetadata)
+	createdFileMetadata := newFileMetadata(fileId, createdRevision)
 	return &createdFileMetadata, err
 }
 

@@ -16,8 +16,10 @@ var (
 
 type FileMetadataRepository interface {
 	StoreFileMetadata(ctx context.Context, fileMetadata FileMetadata) error
+	StoreRevision(ctx context.Context, fileId uuid.UUID, revision Revision) error
 	FetchFileMetadata(ctx context.Context, fileId uuid.UUID) (FileMetadata, error)
 	NotFoundError() error
+	NoMatchError() error
 }
 
 func fetchMetadata(ctx context.Context, requestedFileId uuid.UUID, scopedLogger zerolog.Logger) (FileMetadata, error) {

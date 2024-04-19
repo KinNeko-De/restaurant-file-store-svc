@@ -33,8 +33,8 @@ func TestStoreFile(t *testing.T) {
 	expectedSize := uint64(len(sentFile))
 
 	storeFileResponse := CreateFile(t, client, fileName, chunks, expectedExtension, expectedMediaType, expectedSize)
-	_ = StoreRevision(t, client, storeFileResponse.StoredFile.Id, fileName, chunks, expectedExtension, expectedMediaType, expectedSize)
-	DownloadLatestRevision(t, client, storeFileResponse, sentFile)
+	storeRevisionResponse := StoreRevision(t, client, storeFileResponse.StoredFile.Id, fileName, chunks, expectedExtension, expectedMediaType, expectedSize)
+	DownloadLatestRevision(t, client, storeRevisionResponse, sentFile)
 }
 
 func CreateFile(t *testing.T, client apiRestaurantFile.FileServiceClient, fileName string, fileChunks [][]byte, expectedExtension string, expectedMediaType string, expectedSize uint64) *apiRestaurantFile.StoreFileResponse {
@@ -82,7 +82,12 @@ func StoreRevision(t *testing.T, client apiRestaurantFile.FileServiceClient, fil
 
 	var metadata = &apiRestaurantFile.StoreRevisionRequest{
 		Part: &apiRestaurantFile.StoreRevisionRequest_StoreRevision{
-			StoreRevision: &apiRestaurantFile.StoreRevision{},
+			StoreRevision: &apiRestaurantFile.StoreRevision{
+				FileId: fileId,
+				StoreFile: &apiRestaurantFile.StoreFile{
+					Name: fileName,
+				},
+			},
 		},
 	}
 	uploadStream.Send(metadata)
@@ -100,7 +105,7 @@ func StoreRevision(t *testing.T, client apiRestaurantFile.FileServiceClient, fil
 	require.Nil(t, uploadErr)
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
-	assert.Equal(t, fileId, actualResponse.StoredFile.Id)
+	assert.Equal(t, fileId.Value, actualResponse.StoredFile.Id.Value)
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.Id)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.RevisionId)
