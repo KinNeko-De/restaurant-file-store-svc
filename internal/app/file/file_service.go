@@ -81,7 +81,7 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 	fileId := uuid.New()
 	revisionId := uuid.New()
 
-	totalFileSize, sniff, err := writeFile(&StreamWrapper{stream}, stream.Context(), fileId, revisionId)
+	totalFileSize, sniff, err := writeFile(&StoreFile{stream}, stream.Context(), fileId, revisionId)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 func createRevision(stream apiRestaurantFile.FileService_StoreRevisionServer, fileId uuid.UUID, fileName string) (*FileMetadata, error) {
 	revisionId := uuid.New()
 
-	totalFileSize, sniff, err := writeFile(&StreamWrapper2{stream}, stream.Context(), fileId, revisionId)
+	totalFileSize, sniff, err := writeFile(&StoreRevision{stream}, stream.Context(), fileId, revisionId)
 	if err != nil {
 		return nil, err
 	}

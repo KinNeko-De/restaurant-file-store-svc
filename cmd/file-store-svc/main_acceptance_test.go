@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func TestStoreFile(t *testing.T) {
+func TestStoreFile_StoreRevision_DownloadSpecificRevision_DownloadLatestRevision(t *testing.T) {
 	conn, dialErr := grpc.Dial("localhost:42985", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.Nil(t, dialErr)
 	defer conn.Close()

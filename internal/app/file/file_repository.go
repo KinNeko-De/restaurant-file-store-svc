@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/google/uuid"
-	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/operation/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,27 +27,6 @@ func writeFile(stream ChunckStream, ctx context.Context, fileId uuid.UUID, revis
 	}
 
 	totalFileSize, sniff, err := receiveChunks(stream, fileWriter)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	closeErr := fileWriter.Close()
-	if closeErr != nil {
-		logger.Logger.Err(closeErr).Msg("failed to close file")
-		return 0, nil, status.Error(codes.Internal, "failed to close file. please retry the request")
-	}
-
-	return totalFileSize, sniff, nil
-}
-
-func writeFile2(stream apiRestaurantFile.FileService_StoreRevisionServer, fileId uuid.UUID, revisionId uuid.UUID) (uint64, []byte, error) {
-	fileWriter, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, revisionId)
-	if err != nil {
-		logger.Logger.Err(err).Msg("failed to create file")
-		return 0, nil, status.Error(codes.Internal, "failed to create file. please retry the request")
-	}
-
-	totalFileSize, sniff, err := receiveChunks2(stream, fileWriter)
 	if err != nil {
 		return 0, nil, err
 	}
