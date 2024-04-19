@@ -40,3 +40,24 @@ func writeFile(stream apiRestaurantFile.FileService_StoreFileServer, fileId uuid
 
 	return totalFileSize, sniff, nil
 }
+
+func writeFile2(stream apiRestaurantFile.FileService_StoreRevisionServer, fileId uuid.UUID, revisionId uuid.UUID) (uint64, []byte, error) {
+	fileWriter, err := FileRepositoryInstance.CreateFile(stream.Context(), fileId, revisionId)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to create file")
+		return 0, nil, status.Error(codes.Internal, "failed to create file. please retry the request")
+	}
+
+	totalFileSize, sniff, err := receiveChunks2(stream, fileWriter)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	closeErr := fileWriter.Close()
+	if closeErr != nil {
+		logger.Logger.Err(closeErr).Msg("failed to close file")
+		return 0, nil, status.Error(codes.Internal, "failed to close file. please retry the request")
+	}
+
+	return totalFileSize, sniff, nil
+}

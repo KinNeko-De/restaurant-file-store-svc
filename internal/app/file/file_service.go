@@ -18,6 +18,38 @@ type FileServiceServer struct {
 	apiRestaurantFile.UnimplementedFileServiceServer
 }
 
+// StoreRevision implements v1.FileServiceServer.
+func (s *FileServiceServer) StoreRevision(stream apiRestaurantFile.FileService_StoreRevisionServer) error {
+	storeRevision, err := receiveRevisionMetadata(stream)
+	if err != nil {
+		return err
+	}
+
+	fileId, err := getFileId(storeRevision)
+	if err != nil {
+		return err
+	}
+
+	createdFileMetadata, err := createFile2(stream, fileId, storeRevision.StoreFile.Name)
+	if err != nil {
+		return err
+	}
+
+	response, err := createStoreFileResponse(createdFileMetadata)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to to create response")
+		return status.Error(codes.Internal, "failed to create response. please retry the request")
+	}
+
+	err = stream.SendAndClose(response)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to send response")
+		return status.Error(codes.Internal, "failed to send response. please retry the request")
+	}
+
+	return nil
+}
+
 func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_StoreFileServer) error {
 	storeFile, err := receiveMetadata(stream)
 	if err != nil {
@@ -49,6 +81,21 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 	revisionId := uuid.New()
 
 	totalFileSize, sniff, err := writeFile(stream, fileId, revisionId)
+	if err != nil {
+		return nil, err
+	}
+
+	createdRevision := newRevision(revisionId, fileName, totalFileSize, sniff)
+	createdFileMetadata := newFileMetadata(fileId, createdRevision)
+
+	err = FileMetadataRepositoryInstance.StoreFileMetadata(stream.Context(), createdFileMetadata)
+	return &createdFileMetadata, err
+}
+
+func createFile2(stream apiRestaurantFile.FileService_StoreRevisionServer, fileId uuid.UUID, fileName string) (*FileMetadata, error) {
+	revisionId := uuid.New()
+
+	totalFileSize, sniff, err := writeFile2(stream, fileId, revisionId)
 	if err != nil {
 		return nil, err
 	}
@@ -124,5 +171,19 @@ func getRequestedFileId(request *apiRestaurantFile.DownloadFileRequest) (uuid.UU
 	if err != nil {
 		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId '"+requested.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
 	}
+	return fileId, nil
+}
+
+func getFileId(request *apiRestaurantFile.StoreRevision) (uuid.UUID, error) {
+	requested := request.FileId
+	if requested == nil {
+		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId is mandatory. Please provide a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+
+	fileId, err := apiProtobuf.ToUuid(requested)
+	if err != nil {
+		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId '"+requested.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+
 	return fileId, nil
 }
