@@ -78,7 +78,7 @@ func CreateFile(t *testing.T, client apiRestaurantFile.FileServiceClient, fileNa
 
 func StoreRevision(t *testing.T, client apiRestaurantFile.FileServiceClient, fileId *apiProtobuf.Uuid, fileName string, fileChunks [][]byte, expectedExtension string, expectedMediaType string, expectedSize uint64) *apiRestaurantFile.StoreFileResponse {
 	uploadStream, uploadErr := client.StoreRevision(context.Background())
-	require.Nil(t, uploadErr)
+	require.Nil(t, uploadErr, "failed to store revision: %w", uploadErr)
 
 	var metadata = &apiRestaurantFile.StoreRevisionRequest{
 		Part: &apiRestaurantFile.StoreRevisionRequest_StoreRevision{
