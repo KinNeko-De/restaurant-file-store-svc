@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/google/uuid"
+	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/file"
 	"google.golang.org/grpc"
@@ -32,6 +33,7 @@ func TestStoreFile(t *testing.T) {
 	expectedSize := uint64(len(sentFile))
 
 	storeFileResponse := CreateFile(t, client, fileName, chunks, expectedExtension, expectedMediaType, expectedSize)
+	_ = StoreRevision(t, client, storeFileResponse.StoredFile.Id, fileName, chunks, expectedExtension, expectedMediaType, expectedSize)
 	DownloadLatestRevision(t, client, storeFileResponse, sentFile)
 }
 
@@ -62,6 +64,43 @@ func CreateFile(t *testing.T, client apiRestaurantFile.FileServiceClient, fileNa
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
+	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.Id)
+	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
+	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.RevisionId)
+	assert.NotNil(t, actualResponse.StoredFileMetadata)
+	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
+	assert.Equal(t, expectedExtension, actualResponse.StoredFileMetadata.Extension)
+	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
+	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
+
+	return actualResponse
+}
+
+func StoreRevision(t *testing.T, client apiRestaurantFile.FileServiceClient, fileId *apiProtobuf.Uuid, fileName string, fileChunks [][]byte, expectedExtension string, expectedMediaType string, expectedSize uint64) *apiRestaurantFile.StoreFileResponse {
+	uploadStream, uploadErr := client.StoreRevision(context.Background())
+	require.Nil(t, uploadErr)
+
+	var metadata = &apiRestaurantFile.StoreRevisionRequest{
+		Part: &apiRestaurantFile.StoreRevisionRequest_StoreRevision{
+			StoreRevision: &apiRestaurantFile.StoreRevision{},
+		},
+	}
+	uploadStream.Send(metadata)
+
+	for _, chunk := range fileChunks {
+		var chunkRequest = &apiRestaurantFile.StoreRevisionRequest{
+			Part: &apiRestaurantFile.StoreRevisionRequest_Chunk{
+				Chunk: chunk,
+			},
+		}
+		uploadStream.Send(chunkRequest)
+	}
+
+	actualResponse, uploadErr := uploadStream.CloseAndRecv()
+	require.Nil(t, uploadErr)
+	assert.NotNil(t, actualResponse)
+	assert.NotNil(t, actualResponse.StoredFile)
+	assert.Equal(t, fileId, actualResponse.StoredFile.Id)
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.Id)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.RevisionId)
