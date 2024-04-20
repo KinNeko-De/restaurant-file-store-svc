@@ -402,9 +402,9 @@ func TestStoreRevision_CommunicationError_SendAndClose_RetryIsRequested(t *testi
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{file})
 
 	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
+	var storedRevision *Revision
 	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+	mockFileMetadataRepository := createFileMetadataRepositoryMock2(t, existingFileId, &storedRevision)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreRevision(mockStream)
@@ -416,7 +416,7 @@ func TestStoreRevision_CommunicationError_SendAndClose_RetryIsRequested(t *testi
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
 	assert.Contains(t, actualStatus.Message(), "response")
-	assert.NotNil(t, storedFileMetadata) // TODO: Decide how to clean up this, maybe add metrics to track this; maybe add a small saga?
+	assert.NotNil(t, storedRevision) // TODO: Decide how to clean up this, maybe add metrics to track this; maybe add a small saga?
 }
 
 func TestStoreFile_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testing.T) {
