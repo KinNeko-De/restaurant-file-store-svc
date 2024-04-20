@@ -717,6 +717,52 @@ func TestStoreRevision_FileIdNotFound(t *testing.T) {
 	assert.Nil(t, storedFileMetadata)
 }
 
+func TestStoreRevision_FileIdIsNil(t *testing.T) {
+	request := &v1.StoreRevisionRequest{
+		Part: &v1.StoreRevisionRequest_StoreRevision{
+			StoreRevision: &v1.StoreRevision{
+				FileId: nil,
+			},
+		},
+	}
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.EXPECT().Recv().Return(request, nil).Times(1)
+
+	sut := createSut(t, nil, nil)
+	actualError := sut.StoreRevision(mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	assert.True(t, ok, "Expected a gRPC status error")
+	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), "mandatory")
+}
+
+func TestStoreRevision_FileIdIsInvalid(t *testing.T) {
+	invalidUuid := "433b4b7c-4b1e-4b1e4b1e4b1e"
+
+	request := &v1.StoreRevisionRequest{
+		Part: &v1.StoreRevisionRequest_StoreRevision{
+			StoreRevision: &v1.StoreRevision{
+				FileId: &protobuf.Uuid{
+					Value: invalidUuid,
+				},
+			},
+		},
+	}
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.EXPECT().Recv().Return(request, nil).Times(1)
+
+	sut := createSut(t, nil, nil)
+	actualError := sut.StoreRevision(mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	assert.True(t, ok, "Expected a gRPC status error")
+	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), invalidUuid)
+}
+
 func TestStoreRevision_StoreFileMetadataThrowsError_RetryRequested(t *testing.T) {
 	err := errors.New("Error contains possible sensitive information")
 	sentFile := fixture.TextFile()
