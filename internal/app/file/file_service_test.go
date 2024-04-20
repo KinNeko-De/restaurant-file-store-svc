@@ -416,7 +416,7 @@ func TestStoreRevision_CommunicationError_SendAndClose_RetryIsRequested(t *testi
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
 	assert.Contains(t, actualStatus.Message(), "response")
-	assert.NotNil(t, storedRevision) // TODO: Decide how to clean up this, maybe add metrics to track this; maybe add a small saga?
+	assert.NotNil(t, storedRevision) // TODO: Decide how to clean up this, maybe add metrics to track this; maybe add a small saga? and should the user retry this? the revision is already stored
 }
 
 func TestStoreFile_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testing.T) {
