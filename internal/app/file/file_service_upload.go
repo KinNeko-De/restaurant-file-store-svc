@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func receiveChunks(stream apiRestaurantFile.FileService_StoreFileServer, f io.WriteCloser) (uint64, []byte, error) {
+func receiveChunks(stream ChunckStream, f io.WriteCloser) (uint64, []byte, error) {
 	var totalFileSize uint64 = 0
 	var sniffByteCount uint64 = 0
 	sniff := make([]byte, sniffSize)
@@ -49,12 +49,26 @@ func receiveMetadata(stream apiRestaurantFile.FileService_StoreFileServer) (*api
 
 	msg := firstRequest.GetStoreFile()
 	if msg == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreFileRequest_Name' expected. Actual value is "+reflect.TypeOf(firstRequest.Part).String()+".")
+		return nil, status.Errorf(codes.InvalidArgument, "PartCase of type 'fileServiceApi.StoreFileRequest_StoreFile' expected. Actual value is "+reflect.TypeOf(firstRequest.Part).String()+".")
 	}
 	return msg, nil
 }
 
-func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, []byte, error) {
+func receiveRevisionMetadata(stream apiRestaurantFile.FileService_StoreRevisionServer) (*apiRestaurantFile.StoreRevision, error) {
+	firstRequest, err := stream.Recv()
+	if err != nil {
+		logger.Logger.Err(err).Msg("receiving message failed")
+		return nil, status.Errorf(codes.Internal, "receiving message failed. please retry the request")
+	}
+
+	msg := firstRequest.GetStoreRevision()
+	if msg == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "PartCase of type 'fileServiceApi.StoreRevisionRequest_StoreRevision' expected. Actual value is "+reflect.TypeOf(firstRequest.Part).String()+".")
+	}
+	return msg, nil
+}
+
+func receiveChunk(stream ChunckStream) (bool, []byte, error) {
 	request, err := stream.Recv()
 	if err == io.EOF {
 		return true, nil, nil
@@ -64,9 +78,9 @@ func receiveChunk(stream apiRestaurantFile.FileService_StoreFileServer) (bool, [
 		return false, nil, status.Errorf(codes.Internal, "failed to receive chunk. please retry the request")
 	}
 
-	msg := request.GetChunk()
-	if msg == nil {
-		return false, nil, status.Errorf(codes.InvalidArgument, "FileCase of type 'fileServiceApi.StoreFileRequest_Chunk' expected. Actual value is "+reflect.TypeOf(request.Part).String()+".")
+	msg, err := request.GetChunk()
+	if err != nil {
+		return false, nil, err
 	}
 	return false, msg, nil
 }

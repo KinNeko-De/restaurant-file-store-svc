@@ -79,6 +79,51 @@ func (_c *MockFileMetadataRepository_FetchFileMetadata_Call) RunAndReturn(run fu
 	return _c
 }
 
+// NoMatchError provides a mock function with given fields:
+func (_m *MockFileMetadataRepository) NoMatchError() error {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for NoMatchError")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFileMetadataRepository_NoMatchError_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NoMatchError'
+type MockFileMetadataRepository_NoMatchError_Call struct {
+	*mock.Call
+}
+
+// NoMatchError is a helper method to define mock.On call
+func (_e *MockFileMetadataRepository_Expecter) NoMatchError() *MockFileMetadataRepository_NoMatchError_Call {
+	return &MockFileMetadataRepository_NoMatchError_Call{Call: _e.mock.On("NoMatchError")}
+}
+
+func (_c *MockFileMetadataRepository_NoMatchError_Call) Run(run func()) *MockFileMetadataRepository_NoMatchError_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFileMetadataRepository_NoMatchError_Call) Return(_a0 error) *MockFileMetadataRepository_NoMatchError_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFileMetadataRepository_NoMatchError_Call) RunAndReturn(run func() error) *MockFileMetadataRepository_NoMatchError_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NotFoundError provides a mock function with given fields:
 func (_m *MockFileMetadataRepository) NotFoundError() error {
 	ret := _m.Called()
@@ -167,6 +212,54 @@ func (_c *MockFileMetadataRepository_StoreFileMetadata_Call) Return(_a0 error) *
 }
 
 func (_c *MockFileMetadataRepository_StoreFileMetadata_Call) RunAndReturn(run func(context.Context, FileMetadata) error) *MockFileMetadataRepository_StoreFileMetadata_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StoreRevision provides a mock function with given fields: ctx, fileId, revision
+func (_m *MockFileMetadataRepository) StoreRevision(ctx context.Context, fileId uuid.UUID, revision Revision) error {
+	ret := _m.Called(ctx, fileId, revision)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StoreRevision")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, Revision) error); ok {
+		r0 = rf(ctx, fileId, revision)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFileMetadataRepository_StoreRevision_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StoreRevision'
+type MockFileMetadataRepository_StoreRevision_Call struct {
+	*mock.Call
+}
+
+// StoreRevision is a helper method to define mock.On call
+//   - ctx context.Context
+//   - fileId uuid.UUID
+//   - revision Revision
+func (_e *MockFileMetadataRepository_Expecter) StoreRevision(ctx interface{}, fileId interface{}, revision interface{}) *MockFileMetadataRepository_StoreRevision_Call {
+	return &MockFileMetadataRepository_StoreRevision_Call{Call: _e.mock.On("StoreRevision", ctx, fileId, revision)}
+}
+
+func (_c *MockFileMetadataRepository_StoreRevision_Call) Run(run func(ctx context.Context, fileId uuid.UUID, revision Revision)) *MockFileMetadataRepository_StoreRevision_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(Revision))
+	})
+	return _c
+}
+
+func (_c *MockFileMetadataRepository_StoreRevision_Call) Return(_a0 error) *MockFileMetadataRepository_StoreRevision_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFileMetadataRepository_StoreRevision_Call) RunAndReturn(run func(context.Context, uuid.UUID, Revision) error) *MockFileMetadataRepository_StoreRevision_Call {
 	_c.Call.Return(run)
 	return _c
 }

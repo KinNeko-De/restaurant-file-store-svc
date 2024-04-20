@@ -1,6 +1,8 @@
 package file
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
@@ -44,11 +46,42 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	return nil
 }
 
+func (s *FileServiceServer) StoreRevision(stream apiRestaurantFile.FileService_StoreRevisionServer) error {
+	storeRevision, err := receiveRevisionMetadata(stream)
+	if err != nil {
+		return err
+	}
+
+	fileId, err := getFileId(storeRevision)
+	if err != nil {
+		return err
+	}
+
+	createdFileMetadata, err := createRevision(stream, fileId, storeRevision.StoreFile.Name)
+	if err != nil {
+		return err
+	}
+
+	response, err := createStoreFileResponse(createdFileMetadata)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to to create response")
+		return status.Error(codes.Internal, "failed to create response. please retry the request")
+	}
+
+	err = stream.SendAndClose(response)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to send response")
+		return status.Error(codes.Internal, "failed to send response. please retry the request")
+	}
+
+	return nil
+}
+
 func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName string) (*FileMetadata, error) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
 
-	totalFileSize, sniff, err := writeFile(stream, fileId, revisionId)
+	totalFileSize, sniff, err := writeFile(&StoreFile{stream}, stream.Context(), fileId, revisionId)
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +90,33 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 	createdFileMetadata := newFileMetadata(fileId, createdRevision)
 
 	err = FileMetadataRepositoryInstance.StoreFileMetadata(stream.Context(), createdFileMetadata)
+	if err != nil {
+		logger.Logger.Err(err).Msg("failed to store file metadata")
+		return nil, status.Error(codes.Internal, "failed to store file metadata. please retry the request")
+	}
+
+	return &createdFileMetadata, err
+}
+
+func createRevision(stream apiRestaurantFile.FileService_StoreRevisionServer, fileId uuid.UUID, fileName string) (*FileMetadata, error) {
+	revisionId := uuid.New()
+
+	totalFileSize, sniff, err := writeFile(&StoreRevision{stream}, stream.Context(), fileId, revisionId)
+	if err != nil {
+		return nil, err
+	}
+
+	createdRevision := newRevision(revisionId, fileName, totalFileSize, sniff)
+	err = FileMetadataRepositoryInstance.StoreRevision(stream.Context(), fileId, createdRevision)
+	if err != nil {
+		if errors.Is(err, FileMetadataRepositoryInstance.NoMatchError()) {
+			return nil, status.Error(codes.NotFound, "file with id '"+fileId.String()+"' not found.")
+		}
+		logger.Logger.Err(err).Msg("failed to store revision metadata")
+		return nil, status.Error(codes.Internal, "failed to store file metadata. please retry the request")
+	}
+
+	createdFileMetadata := newFileMetadata(fileId, createdRevision)
 	return &createdFileMetadata, err
 }
 
@@ -124,5 +184,19 @@ func getRequestedFileId(request *apiRestaurantFile.DownloadFileRequest) (uuid.UU
 	if err != nil {
 		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId '"+requested.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
 	}
+	return fileId, nil
+}
+
+func getFileId(request *apiRestaurantFile.StoreRevision) (uuid.UUID, error) {
+	requested := request.FileId
+	if requested == nil {
+		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId is mandatory. Please provide a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+
+	fileId, err := apiProtobuf.ToUuid(requested)
+	if err != nil {
+		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId '"+requested.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+
 	return fileId, nil
 }
