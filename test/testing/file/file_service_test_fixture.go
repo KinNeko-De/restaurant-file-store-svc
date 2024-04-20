@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	"github.com/stretchr/testify/mock"
@@ -12,6 +13,15 @@ import (
 
 func CreateStoreFileStream(t *testing.T) *FileService_StoreFileServer {
 	mockStream := NewFileService_StoreFileServer(t)
+
+	ctx := context.Background()
+	mockStream.EXPECT().Context().Return(ctx).Maybe()
+
+	return mockStream
+}
+
+func CreateStoreRevisionStream(t *testing.T) *FileService_StoreRevisionServer {
+	mockStream := NewFileService_StoreRevisionServer(t)
 
 	ctx := context.Background()
 	mockStream.EXPECT().Context().Return(ctx).Maybe()
@@ -30,9 +40,34 @@ func CreateMetadataStoreFileRequest(t *testing.T, fileName string) *v1.StoreFile
 	return metadata
 }
 
+func CreateMetadataStoreRevisionRequest(t *testing.T, fileId uuid.UUID, fileName string) *v1.StoreRevisionRequest {
+	metadata := &v1.StoreRevisionRequest{
+		Part: &v1.StoreRevisionRequest_StoreRevision{
+			StoreRevision: &v1.StoreRevision{
+				FileId: &protobuf.Uuid{
+					Value: fileId.String(),
+				},
+				StoreFile: &v1.StoreFile{
+					Name: fileName,
+				},
+			},
+		},
+	}
+	return metadata
+}
+
 func CreateChunkStoreFileRequest(t *testing.T, chunk []byte) *v1.StoreFileRequest {
 	chunkRequest := &v1.StoreFileRequest{
 		Part: &v1.StoreFileRequest_Chunk{
+			Chunk: chunk,
+		},
+	}
+	return chunkRequest
+}
+
+func CreateChunkStoreRevisionRequest(t *testing.T, chunk []byte) *v1.StoreRevisionRequest {
+	chunkRequest := &v1.StoreRevisionRequest{
+		Part: &v1.StoreRevisionRequest_Chunk{
 			Chunk: chunk,
 		},
 	}
@@ -54,6 +89,22 @@ func CreateValidStoreFileStream(t *testing.T, fileName string, fileChunks [][]by
 
 	for _, chunk := range fileChunks {
 		chunkRequest := CreateChunkStoreFileRequest(t, chunk)
+		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
+	}
+
+	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
+
+	return mockStream
+}
+
+func CreateValidStoreRevisionStream(t *testing.T, existingFileId uuid.UUID, fileName string, fileChunks [][]byte) *FileService_StoreRevisionServer {
+	mockStream := CreateStoreRevisionStream(t)
+
+	metadata := CreateMetadataStoreRevisionRequest(t, existingFileId, fileName)
+	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
+
+	for _, chunk := range fileChunks {
+		chunkRequest := CreateChunkStoreRevisionRequest(t, chunk)
 		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
 	}
 

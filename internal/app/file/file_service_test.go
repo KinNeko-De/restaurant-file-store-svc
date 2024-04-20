@@ -370,6 +370,60 @@ func TestStoreFile_StoreFileMetadataThrowsError_RetryRequested(t *testing.T) {
 	assert.Nil(t, storedFileMetadata)
 }
 
+func TestStoreRevision_StoreFileMetadataDoesNotFindFileId(t *testing.T) {
+	err := errors.New("file id not matching")
+	sentFile := fixture.TextFile()
+	sentFileName := "test.txt"
+
+	existingFile := uuid.New()
+	var generatedRevisionId *uuid.UUID
+	var storedFileMetadata *FileMetadata
+	mockStream := fixture.CreateValidStoreRevisionStream(t, existingFile, sentFileName, [][]byte{sentFile})
+	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
+	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFile, &generatedRevisionId)
+	mockFileMetadataRepository := &MockFileMetadataRepository{}
+	setupFileMetadataRepositoryMockStoreRevisionReturnsError(t, mockFileMetadataRepository, existingFile, err)
+	mockFileMetadataRepository.EXPECT().NoMatchError().Return(err).Times(1)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreRevision(mockStream)
+
+	assert.NotNil(t, actualError)
+	assert.False(t, errors.Is(actualError, err), "Error should not be passed to the client")
+	actualStatus, ok := status.FromError(actualError)
+	assert.True(t, ok, "Expected a gRPC status error")
+	assert.Equal(t, codes.NotFound, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), existingFile.String())
+	assert.Nil(t, storedFileMetadata)
+}
+
+func TestStoreRevision_StoreFileMetadataThrowsError_RetryRequested(t *testing.T) {
+	err := errors.New("Error contains possible sensitive information")
+	sentFile := fixture.TextFile()
+	sentFileName := "test.txt"
+
+	existingFile := uuid.New()
+	var generatedRevisionId *uuid.UUID
+	var storedFileMetadata *FileMetadata
+	mockStream := fixture.CreateValidStoreRevisionStream(t, existingFile, sentFileName, [][]byte{sentFile})
+	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
+	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFile, &generatedRevisionId)
+	mockFileMetadataRepository := &MockFileMetadataRepository{}
+	setupFileMetadataRepositoryMockStoreRevisionReturnsError(t, mockFileMetadataRepository, existingFile, err)
+	mockFileMetadataRepository.EXPECT().NoMatchError().Return(errors.New("not expected error")).Times(1)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.StoreRevision(mockStream)
+
+	assert.NotNil(t, actualError)
+	assert.False(t, errors.Is(actualError, err), "Error should not be passed to the client")
+	actualStatus, ok := status.FromError(actualError)
+	assert.True(t, ok, "Expected a gRPC status error")
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), "retry")
+	assert.Nil(t, storedFileMetadata)
+}
+
 func TestDownloadFile_FileIdIsNil(t *testing.T) {
 	request := &v1.DownloadFileRequest{
 		FileId: nil,
@@ -741,6 +795,20 @@ func createFileRepositoryMock(t *testing.T, fileWriter *ioFixture.MockWriteClose
 	return mockFileRepository
 }
 
+func createFileRepositoryMock2(t *testing.T, fileWriter *ioFixture.MockWriteCloser, expectedFileId uuid.UUID, generatedRevisionId **uuid.UUID) *MockFileRepository {
+	// TODO Name setupexpectedRevision
+	t.Helper()
+	mockFileRepository := &MockFileRepository{}
+	mockFileRepository.EXPECT().CreateFile(mock.Anything, expectedFileId, mock.IsType(uuid.New())).
+		Run(func(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) {
+			*generatedRevisionId = &revisionId
+		}).
+		Return(fileWriter, nil).
+		Times(1)
+
+	return mockFileRepository
+}
+
 func createFileMetadataRepositoryMock(t *testing.T, storedFileMetadata **FileMetadata) *MockFileMetadataRepository {
 	t.Helper()
 	mockFileMetadataRepository := &MockFileMetadataRepository{}
@@ -759,6 +827,13 @@ func setupFileMetadataRepositoryMockStoreFileMetadataReturnsError(t *testing.T, 
 		Times(1)
 
 	return mockFileMetadataRepository
+}
+
+func setupFileMetadataRepositoryMockStoreRevisionReturnsError(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, fileId uuid.UUID, err error) {
+	t.Helper()
+	mockFileMetadataRepository.EXPECT().StoreRevision(mock.Anything, fileId, mock.IsType(Revision{})).
+		Return(err).
+		Times(1)
 }
 
 func setupFileMetadataRepositoryToFetchMetadata(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, fileId uuid.UUID, fileMetadata FileMetadata) {
