@@ -127,6 +127,21 @@ func CreateValidStoreFileStreamThatAbortsOnFileWrite(t *testing.T, fileName stri
 	return mockStream
 }
 
+func CreateValidStoreRevisionStreamThatAbortsOnFileWrite(t *testing.T, fileId uuid.UUID, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreRevisionServer {
+	// TODO reorganzie/rename this as is has nothing to do with file write
+	mockStream := CreateStoreRevisionStream(t)
+
+	metadata := CreateMetadataStoreRevisionRequest(t, fileId, fileName)
+	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
+
+	for _, chunk := range successfulWritenfileChunks {
+		chunkRequest := CreateChunkStoreRevisionRequest(t, chunk)
+		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
+	}
+
+	return mockStream
+}
+
 func CreateValidStoreFileStreamThatAbortsOnFileClose(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
 	mockStream := CreateStoreFileStream(t)
 
@@ -143,7 +158,29 @@ func CreateValidStoreFileStreamThatAbortsOnFileClose(t *testing.T, fileName stri
 	return mockStream
 }
 
+func CreateValidStoreRevisionStreamThatAbortsOnFileClose(t *testing.T, fileId uuid.UUID, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreRevisionServer {
+	mockStream := CreateStoreRevisionStream(t)
+
+	metadata := CreateMetadataStoreRevisionRequest(t, fileId, fileName)
+	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
+
+	for _, chunk := range successfulWritenfileChunks {
+		chunkRequest := CreateChunkStoreRevisionRequest(t, chunk)
+		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
+	}
+
+	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
+
+	return mockStream
+}
+
 func SetupAndRecordSuccessfulStoreFileResponse(t *testing.T, mockStream *FileService_StoreFileServer, actualResponse **v1.StoreFileResponse) {
+	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
+		*actualResponse = response
+	}).Return(nil).Times(1)
+}
+
+func SetupAndRecordSuccessfulStoreRevisionResponse(t *testing.T, mockStream *FileService_StoreRevisionServer, actualResponse **v1.StoreFileResponse) {
 	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
 		*actualResponse = response
 	}).Return(nil).Times(1)
