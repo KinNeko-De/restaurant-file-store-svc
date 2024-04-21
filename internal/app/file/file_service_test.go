@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
-	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/file"
 	ioFixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/io"
@@ -30,7 +29,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedFileExtension := ".txt"
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
-	recordActualResponse := fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
@@ -83,9 +82,8 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffByt
 	expectedSize := uint64(4)
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedFileExtension := ".txt"
-	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreRevisionStream(t, existingFileId, sentFileName, [][]byte{sentFile})
-	fixture.SetupAndRecordSuccessfulStoreRevisionResponse(t, mockStream, &actualResponse)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
@@ -98,14 +96,16 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffByt
 	assert.Nil(t, actualError)
 	actualStoredRevisionId := recordStoredRevisionId()
 	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
-	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
+
 	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 	assert.Equal(t, uuid.Version(0x4), actualStoredRevisionId.Version())
 	assert.Equal(t, uuid.RFC4122, actualStoredRevisionId.Variant())
 
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
+	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotNil(t, actualResponse.StoredFileMetadata)
 	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
@@ -128,7 +128,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	expectedSize := uint64(512)
 	expectedMediaType := "application/pdf"
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
-	recordActualResponse := fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
@@ -165,9 +165,8 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *
 	expectedSize := uint64(512)
 	expectedMediaType := "application/pdf"
 
-	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreRevisionStream(t, existingFileId, sentFileName, [][]byte{sentFile})
-	fixture.SetupAndRecordSuccessfulStoreRevisionResponse(t, mockStream, &actualResponse)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
@@ -179,6 +178,7 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *
 
 	assert.Nil(t, actualError)
 
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFileMetadata)
 	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
@@ -202,7 +202,7 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	expectedMediaType := "application/pdf"
 	expectedFileExtension := ".pdf"
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, chunks)
-	recordActualResponse := fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.CreateWriterCloser(t, chunks)
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
@@ -249,9 +249,8 @@ func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512Sn
 	expectedSize := uint64(51124)
 	expectedMediaType := "application/pdf"
 	expectedFileExtension := ".pdf"
-	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreRevisionStream(t, existingFileId, sentFileName, chunks)
-	fixture.SetupAndRecordSuccessfulStoreRevisionResponse(t, mockStream, &actualResponse)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.CreateWriterCloser(t, chunks)
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
@@ -263,6 +262,7 @@ func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512Sn
 
 	assert.Nil(t, actualError)
 
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)

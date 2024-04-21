@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func (mockStream *MockFileService_StoreFileServer) SetupSendAndClose(t *testing.T) func() *apiRestaurantFile.StoreFileResponse {
+func (mockStream *MockFileService_StoreRevisionServer) SetupSendAndClose(t *testing.T) func() *apiRestaurantFile.StoreFileResponse {
 	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *apiRestaurantFile.StoreFileResponse) {
 		actualResponse = response

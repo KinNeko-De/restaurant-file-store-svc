@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
-	"github.com/stretchr/testify/mock"
 )
 
 func CreateStoreFileStream(t *testing.T) *MockFileService_StoreFileServer {
@@ -165,10 +164,4 @@ func CreateValidStoreRevisionStreamThatAbortsOnFileClose(t *testing.T, fileId uu
 	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
 
 	return mockStream
-}
-
-func SetupAndRecordSuccessfulStoreRevisionResponse(t *testing.T, mockStream *MockFileService_StoreRevisionServer, actualResponse **v1.StoreFileResponse) {
-	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
-		*actualResponse = response
-	}).Return(nil).Times(1)
 }
