@@ -45,3 +45,13 @@ func (mockFileRepository *MockFileRepository) setupCreateFileNewRevision(t *test
 		return generatedRevisionId
 	}
 }
+
+func (mockFileRepository *MockFileRepository) setupOpenFileExistingFile(t *testing.T, fileId uuid.UUID, revisionId uuid.UUID, fileReader *ioFixture.MockReadCloser) {
+	t.Helper()
+	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(fileReader, nil).Times(1)
+}
+
+func (mockFileRepository *MockFileRepository) setupOpenFileError(t *testing.T, fileId uuid.UUID, revisionId uuid.UUID, err error) {
+	t.Helper()
+	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(nil, err).Times(1)
+}

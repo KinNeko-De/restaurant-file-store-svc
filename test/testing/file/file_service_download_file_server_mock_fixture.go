@@ -53,3 +53,7 @@ func (mockStream *MockFileService_DownloadFileServer) SetupRecordStoredFileMetad
 		return actualStoredFileMetadata
 	}
 }
+
+func (mockStream *MockFileService_DownloadFileServer) SetupSendError(t *testing.T, err error) {
+	mockStream.EXPECT().Send(mock.Anything).Return(err).Times(1)
+}

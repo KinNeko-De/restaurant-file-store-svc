@@ -46,15 +46,21 @@ func (mockFileMetadataRepository *MockFileMetadataRepository) setupFileMetadataR
 	return mockFileMetadataRepository
 }
 
-func (mockFileMetadataRepository *MockFileMetadataRepository) setupFileMetadataRepositoryMockStoreRevisionReturnsError(t *testing.T, fileId uuid.UUID, err error) {
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupFileMetadataRepositoryMockStoreRevisionReturnsError(t *testing.T, fileId uuid.UUID, err error, noMatchErr error) {
 	t.Helper()
-	mockFileMetadataRepository.EXPECT().StoreRevision(mock.Anything, fileId, mock.IsType(Revision{})).
-		Return(err).
-		Times(1)
+	mockFileMetadataRepository.EXPECT().StoreRevision(mock.Anything, fileId, mock.IsType(Revision{})).Return(err).Times(1)
+	mockFileMetadataRepository.EXPECT().NoMatchError().Return(noMatchErr).Times(1)
+
 }
 
-func (mockFileMetadataRepository *MockFileMetadataRepository) setupFileMetadataRepositoryToFetchMetadata(t *testing.T, fileId uuid.UUID, fileMetadata FileMetadata) {
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupFetchFileMetadata(t *testing.T, fileId uuid.UUID, fileMetadata FileMetadata) {
 	t.Helper()
 	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(fileMetadata, nil).Times(1)
 	mockFileMetadataRepository.EXPECT().NotFoundError().Return(errors.New("not expected error")).Times(1)
+}
+
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupFetchFileMetadataReturnsError(t *testing.T, fileId uuid.UUID, err error, notFoundErr error) {
+	t.Helper()
+	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(FileMetadata{}, err).Times(1)
+	mockFileMetadataRepository.EXPECT().NotFoundError().Return(notFoundErr).Times(1)
 }
