@@ -185,12 +185,3 @@ func SetupAndRecordSuccessfulStoreRevisionResponse(t *testing.T, mockStream *Fil
 		*actualResponse = response
 	}).Return(nil).Times(1)
 }
-
-func CreateDownloadFileStream(t *testing.T) *FileService_DownloadFileServer {
-	mockStream := NewFileService_DownloadFileServer(t)
-
-	ctx := context.Background()
-	mockStream.EXPECT().Context().Return(ctx).Maybe()
-
-	return mockStream
-}

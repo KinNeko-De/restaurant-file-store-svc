@@ -1121,22 +1121,19 @@ func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *tes
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	mockStream := fixture.CreateDownloadFileStream(t)
-	mockStream.EXPECT().Send(mock.MatchedBy(func(response *apiRestaurantFile.DownloadFileResponse) bool {
-		actualMetadata := response.GetMetadata()
-		return actualMetadata.Extension == latestedRevision.Extension &&
-			actualMetadata.MediaType == latestedRevision.MediaType &&
-			actualMetadata.Size == latestedRevision.Size &&
-			actualMetadata.CreatedAt.AsTime().Equal(latestedRevision.CreatedAt)
-	})).Return(nil).Times(1)
+	recordStoredFileMetadata := fixture.SetupRecordStoredFileMetadata(t, mockStream)
+	recordDownloadedFile := fixture.SetupRecordDownloadedFile(t, mockStream)
 
-	actualFile := make([]byte, 0)
-	mockStream.EXPECT().Send(mock.Anything).Run(func(response *v1.DownloadFileResponse) {
-		actualFile = append(actualFile, response.GetChunk()...)
-	}).Return(nil)
 	actualError := sut.DownloadFile(request, mockStream)
 
 	assert.Nil(t, actualError)
-	assert.Equal(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc, actualFile)
+	actualStoredFileMetadata := recordStoredFileMetadata()
+	assert.Equal(t, latestedRevision.Extension, actualStoredFileMetadata.Extension)
+	assert.Equal(t, latestedRevision.MediaType, actualStoredFileMetadata.MediaType)
+	assert.Equal(t, latestedRevision.Size, actualStoredFileMetadata.Size)
+	assert.Equal(t, latestedRevision.CreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	recordDownloadedFile()
+	assert.Equal(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc, recordDownloadedFile())
 }
 
 func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMetadataRepository *MockFileMetadataRepository) FileServiceServer {
