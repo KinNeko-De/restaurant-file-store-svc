@@ -54,7 +54,9 @@ func (mockStream *MockFileService_StoreFileServer) SetupSendFile(t *testing.T, f
 		chunkRequest := CreateChunkStoreFileRequest(t, chunk)
 		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
 	}
+}
 
+func (mockStream *MockFileService_StoreFileServer) SetupSendEndOfFile(t *testing.T) {
 	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
 }
 
