@@ -9,7 +9,7 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-func setupStoreFileMetadata(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, storedFileMetadata **FileMetadata) {
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupStoreFileMetadata(t *testing.T, storedFileMetadata **FileMetadata) {
 	t.Helper()
 	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(FileMetadata{})).
 		Run(func(ctx context.Context, fileMetadata FileMetadata) { *storedFileMetadata = &fileMetadata }).
@@ -17,7 +17,7 @@ func setupStoreFileMetadata(t *testing.T, mockFileMetadataRepository *MockFileMe
 		Times(1)
 }
 
-func setupStoreRevisionMetadata(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, fileid uuid.UUID, storedRevision **Revision) {
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupStoreRevisionMetadata(t *testing.T, fileid uuid.UUID, storedRevision **Revision) {
 	t.Helper()
 	mockFileMetadataRepository.EXPECT().StoreRevision(mock.Anything, fileid, mock.IsType(Revision{})).
 		Run(func(ctx context.Context, existingFileId uuid.UUID, revision Revision) { *storedRevision = &revision }).
@@ -25,7 +25,7 @@ func setupStoreRevisionMetadata(t *testing.T, mockFileMetadataRepository *MockFi
 		Times(1)
 }
 
-func setupFileMetadataRepositoryMockStoreFileMetadataReturnsError(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, err error) *MockFileMetadataRepository {
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupFileMetadataRepositoryMockStoreFileMetadataReturnsError(t *testing.T, err error) *MockFileMetadataRepository {
 	t.Helper()
 	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(FileMetadata{})).
 		Return(err).
@@ -34,14 +34,14 @@ func setupFileMetadataRepositoryMockStoreFileMetadataReturnsError(t *testing.T, 
 	return mockFileMetadataRepository
 }
 
-func setupFileMetadataRepositoryMockStoreRevisionReturnsError(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, fileId uuid.UUID, err error) {
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupFileMetadataRepositoryMockStoreRevisionReturnsError(t *testing.T, fileId uuid.UUID, err error) {
 	t.Helper()
 	mockFileMetadataRepository.EXPECT().StoreRevision(mock.Anything, fileId, mock.IsType(Revision{})).
 		Return(err).
 		Times(1)
 }
 
-func setupFileMetadataRepositoryToFetchMetadata(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, fileId uuid.UUID, fileMetadata FileMetadata) {
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupFileMetadataRepositoryToFetchMetadata(t *testing.T, fileId uuid.UUID, fileMetadata FileMetadata) {
 	t.Helper()
 	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(fileMetadata, nil).Times(1)
 	mockFileMetadataRepository.EXPECT().NotFoundError().Return(errors.New("not expected error")).Times(1)
