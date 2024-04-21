@@ -607,10 +607,14 @@ func TestStoreRevision_FileWritingError_RetryRequested(t *testing.T) {
 
 func TestStoreFile_FileClosingError_RetryRequested(t *testing.T) {
 	err := errors.New("Error closing file")
-	sentFile := fixture.TextFile()
 	sentFileName := "test.txt"
-	mockStream := fixture.CreateValidStoreFileStreamThatAbortsOnFileClose(t, sentFileName, [][]byte{sentFile})
-	fileWriter := ioFixture.CreateWriterCloserRanIntoCloseError(t, [][]byte{sentFile}, err)
+	sentFile := fixture.TextFile()
+	chunks := [][]byte{sentFile}
+	mockStream := fixture.CreateStoreFileStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	fileWriter := ioFixture.CreateWriterCloserRanIntoCloseError(t, chunks, err)
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredIds := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
 
@@ -630,10 +634,14 @@ func TestStoreFile_FileClosingError_RetryRequested(t *testing.T) {
 func TestStoreRevision_FileClosingError_RetryRequested(t *testing.T) {
 	err := errors.New("Error closing file")
 	sentFile := fixture.TextFile()
+	chunks := [][]byte{sentFile}
 	sentFileName := "test.txt"
 	existingFileId := uuid.New()
-	mockStream := fixture.CreateValidStoreRevisionStreamThatAbortsOnFileClose(t, existingFileId, sentFileName, [][]byte{sentFile})
-	fileWriter := ioFixture.CreateWriterCloserRanIntoCloseError(t, [][]byte{sentFile}, err)
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	fileWriter := ioFixture.CreateWriterCloserRanIntoCloseError(t, chunks, err)
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoreRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
 
