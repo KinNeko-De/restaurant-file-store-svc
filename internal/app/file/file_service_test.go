@@ -29,7 +29,6 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	expectedSize := uint64(4)
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedFileExtension := ".txt"
-	var storedFileMetadata *FileMetadata
 	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
 	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
@@ -37,7 +36,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
-	mockFileMetadataRepository.setupStoreFileMetadata(t, &storedFileMetadata)
+	recordStoredFileMetadata := mockFileMetadataRepository.setupStoreFileMetadata(t)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
@@ -62,6 +61,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
 	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
 
+	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata)
 	assert.NotNil(t, storedFileMetadata.Id)
 	assert.NotNil(t, storedFileMetadata.Revisions)
@@ -127,7 +127,6 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	sentFileName := "test.pdf"
 	expectedSize := uint64(512)
 	expectedMediaType := "application/pdf"
-	var storedFileMetadata *FileMetadata
 	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
 	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
@@ -135,7 +134,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
-	mockFileMetadataRepository.setupStoreFileMetadata(t, &storedFileMetadata)
+	recordStoredFileMetadata := mockFileMetadataRepository.setupStoreFileMetadata(t)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
@@ -147,6 +146,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
 	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
 
+	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata)
 	assert.Len(t, storedFileMetadata.Revisions, 1)
 	assert.NotNil(t, storedFileMetadata.Revisions[0].Id)
@@ -201,7 +201,6 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	expectedSize := uint64(51124)
 	expectedMediaType := "application/pdf"
 	expectedFileExtension := ".pdf"
-	var storedFileMetadata *FileMetadata
 	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, chunks)
 	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
@@ -209,7 +208,7 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
-	mockFileMetadataRepository.setupStoreFileMetadata(t, &storedFileMetadata)
+	recordStoredFileMetadata := mockFileMetadataRepository.setupStoreFileMetadata(t)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
@@ -226,6 +225,7 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
 	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
 
+	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata)
 	assert.NotNil(t, storedFileMetadata.Id)
 	assert.NotNil(t, storedFileMetadata.Revisions)
@@ -367,11 +367,10 @@ func TestStoreFile_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T
 	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
 	mockStream.EXPECT().SendAndClose(mock.Anything).Return(errors.New("ups..someting went wrong")).Times(1)
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{file})
-	var storedFileMetadata *FileMetadata
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
-	mockFileMetadataRepository.setupStoreFileMetadata(t, &storedFileMetadata)
+	recordStoredFileMetadata := mockFileMetadataRepository.setupStoreFileMetadata(t)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
@@ -383,6 +382,7 @@ func TestStoreFile_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
 	assert.Contains(t, actualStatus.Message(), "response")
+	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata) // TODO: Decide how to clean up this, maybe add metrics to track this; maybe add a small saga?
 	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
 	assert.NotEqual(t, uuid.Nil, actualStoredFileId)

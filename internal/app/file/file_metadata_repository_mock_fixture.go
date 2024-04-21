@@ -9,12 +9,17 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-func (mockFileMetadataRepository *MockFileMetadataRepository) setupStoreFileMetadata(t *testing.T, storedFileMetadata **FileMetadata) {
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupStoreFileMetadata(t *testing.T) func() FileMetadata {
 	t.Helper()
+	var storedFileMetadata FileMetadata
 	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(FileMetadata{})).
-		Run(func(ctx context.Context, fileMetadata FileMetadata) { *storedFileMetadata = &fileMetadata }).
+		Run(func(ctx context.Context, fileMetadata FileMetadata) { storedFileMetadata = fileMetadata }).
 		Return(nil).
 		Times(1)
+
+	return func() FileMetadata {
+		return storedFileMetadata
+	}
 }
 
 func (mockFileMetadataRepository *MockFileMetadataRepository) setupStoreRevisionMetadata(t *testing.T, fileid uuid.UUID) func() Revision {
