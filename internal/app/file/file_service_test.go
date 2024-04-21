@@ -730,24 +730,36 @@ func TestStoreRevision_FileIdIsNil(t *testing.T) {
 }
 
 func TestStoreRevision_FileIdIsInvalid(t *testing.T) {
-	invalidUuid := "433b4b7c-4b1e-4b1e4b1e4b1e"
-	storeRevision := &apiRestaurantFile.StoreRevision{
-		FileId: &protobuf.Uuid{
-			Value: invalidUuid,
-		},
+	tests := []struct {
+		name string
+		uuid string
+	}{
+		{"Empty", ""},
+		{"InvalidFormat", "433b4b7c-4b1e-4b1e4b1e4b1e"},
 	}
-	request := fixture.CreateMetadataStoreRevisionRequest(t, storeRevision)
-	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.SetupSendMetadata(t, request)
 
-	sut := createSut(t, nil, NewMockFileMetadataRepository(t))
-	actualError := sut.StoreRevision(mockStream)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			storeRevision := &apiRestaurantFile.StoreRevision{
+				FileId: &protobuf.Uuid{
+					Value: test.uuid,
+				},
+			}
 
-	assert.NotNil(t, actualError)
-	actualStatus, ok := status.FromError(actualError)
-	assert.True(t, ok, "Expected a gRPC status error")
-	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
-	assert.Contains(t, actualStatus.Message(), invalidUuid)
+			request := fixture.CreateMetadataStoreRevisionRequest(t, storeRevision)
+			mockStream := fixture.CreateStoreRevisionStream(t)
+			mockStream.SetupSendMetadata(t, request)
+
+			sut := createSut(t, nil, NewMockFileMetadataRepository(t))
+			actualError := sut.StoreRevision(mockStream)
+
+			assert.NotNil(t, actualError)
+			actualStatus, ok := status.FromError(actualError)
+			assert.True(t, ok, "Expected a gRPC status error")
+			assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), test.uuid)
+		})
+	}
 }
 
 func TestStoreRevision_StoreFileMetadataThrowsError_RetryRequested(t *testing.T) {
