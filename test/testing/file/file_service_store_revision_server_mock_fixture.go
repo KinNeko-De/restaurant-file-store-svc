@@ -68,6 +68,13 @@ func CreateChunkStoreRevisionRequest(t *testing.T, chunk []byte) *apiRestaurantF
 	return chunkRequest
 }
 
+func (mockStream *MockFileService_StoreRevisionServer) SetupSuccessfulSend(t *testing.T, existingFileId uuid.UUID, sentFileName string, fileChunks [][]byte) {
+	metadata := CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName)
+	mockStream.SetupSendMetadata(t, metadata)
+	mockStream.SetupSendFile(t, fileChunks)
+	mockStream.SetupSendEndOfFile(t)
+}
+
 func (mockStream *MockFileService_StoreRevisionServer) SetupSendMetadata(t *testing.T, metadata *apiRestaurantFile.StoreRevisionRequest) {
 	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
 }
@@ -77,6 +84,10 @@ func (mockStream *MockFileService_StoreRevisionServer) SetupSendFile(t *testing.
 		chunkRequest := CreateChunkStoreRevisionRequest(t, chunk)
 		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
 	}
+}
+
+func (mockStream *MockFileService_StoreRevisionServer) SetupSendError(t *testing.T, sendError error) {
+	mockStream.EXPECT().Recv().Return(nil, sendError).Times(1)
 }
 
 func (mockStream *MockFileService_StoreRevisionServer) SetupSendEndOfFile(t *testing.T) {
@@ -92,4 +103,8 @@ func (mockStream *MockFileService_StoreRevisionServer) SetupSendAndClose(t *test
 	return func() *apiRestaurantFile.StoreFileResponse {
 		return actualResponse
 	}
+}
+
+func (mockStream *MockFileService_StoreRevisionServer) SetupSendAndCloseError(t *testing.T, sendError error) {
+	mockStream.EXPECT().SendAndClose(mock.Anything).Return(sendError).Times(1)
 }

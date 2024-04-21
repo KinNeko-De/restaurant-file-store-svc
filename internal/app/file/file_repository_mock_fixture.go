@@ -26,6 +26,11 @@ func (mockFileRepository *MockFileRepository) setupCreateFileNewFile(t *testing.
 	}
 }
 
+func (mockFileRepository *MockFileRepository) setupCreateFileError(t *testing.T, createError error) {
+	t.Helper()
+	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New())).Return(nil, createError).Times(1)
+}
+
 func (mockFileRepository *MockFileRepository) setupCreateFileNewRevision(t *testing.T, expectedFileId uuid.UUID, fileWriter *ioFixture.MockWriteCloser) func() uuid.UUID {
 	t.Helper()
 	var generatedRevisionId uuid.UUID

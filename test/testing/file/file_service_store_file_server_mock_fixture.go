@@ -45,6 +45,13 @@ func CreateChunkStoreFileRequest(t *testing.T, chunk []byte) *apiRestaurantFile.
 	return chunkRequest
 }
 
+func (mockStream *MockFileService_StoreFileServer) SetupSuccessfulSend(t *testing.T, sentFileName string, fileChunks [][]byte) {
+	metadata := CreateMetadataStoreFileRequestFromFileName(t, sentFileName)
+	mockStream.SetupSendMetadata(t, metadata)
+	mockStream.SetupSendFile(t, fileChunks)
+	mockStream.SetupSendEndOfFile(t)
+}
+
 func (mockStream *MockFileService_StoreFileServer) SetupSendMetadata(t *testing.T, metadata *apiRestaurantFile.StoreFileRequest) {
 	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
 }
@@ -54,6 +61,10 @@ func (mockStream *MockFileService_StoreFileServer) SetupSendFile(t *testing.T, f
 		chunkRequest := CreateChunkStoreFileRequest(t, chunk)
 		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
 	}
+}
+
+func (mockStream *MockFileService_StoreFileServer) SetupSendError(t *testing.T, sendError error) {
+	mockStream.EXPECT().Recv().Return(nil, sendError).Times(1)
 }
 
 func (mockStream *MockFileService_StoreFileServer) SetupSendEndOfFile(t *testing.T) {
@@ -69,4 +80,8 @@ func (mockStream *MockFileService_StoreFileServer) SetupSendAndClose(t *testing.
 	return func() *apiRestaurantFile.StoreFileResponse {
 		return actualResponse
 	}
+}
+
+func (mockStream *MockFileService_StoreFileServer) SetupSendAndCloseError(t *testing.T, closeError error) {
+	mockStream.EXPECT().SendAndClose(mock.Anything).Return(closeError).Times(1)
 }

@@ -5,7 +5,6 @@ package file
 import (
 	"errors"
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
@@ -30,9 +29,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedFileExtension := ".txt"
 	mockStream := fixture.CreateStoreFileStream(t)
-	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, sentFileName))
-	mockStream.SetupSendFile(t, chunks)
-	mockStream.SetupSendEndOfFile(t)
+	mockStream.SetupSuccessfulSend(t, sentFileName, chunks)
 	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.NewMockWriteCloser(t)
 	fileWriter.SetupSuccessfulWrite(t, chunks)
@@ -89,9 +86,7 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffByt
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedFileExtension := ".txt"
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
-	mockStream.SetupSendFile(t, chunks)
-	mockStream.SetupSendEndOfFile(t)
+	mockStream.SetupSuccessfulSend(t, existingFileId, sentFileName, chunks)
 	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.NewMockWriteCloser(t)
 	fileWriter.SetupSuccessfulWrite(t, chunks)
@@ -139,9 +134,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	expectedSize := uint64(512)
 	expectedMediaType := "application/pdf"
 	mockStream := fixture.CreateStoreFileStream(t)
-	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, sentFileName))
-	mockStream.SetupSendFile(t, chunks)
-	mockStream.SetupSendEndOfFile(t)
+	mockStream.SetupSuccessfulSend(t, sentFileName, chunks)
 	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.NewMockWriteCloser(t)
 	fileWriter.SetupSuccessfulWrite(t, chunks)
@@ -181,9 +174,7 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *
 	expectedSize := uint64(512)
 	expectedMediaType := "application/pdf"
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
-	mockStream.SetupSendFile(t, chunks)
-	mockStream.SetupSendEndOfFile(t)
+	mockStream.SetupSuccessfulSend(t, existingFileId, sentFileName, chunks)
 	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.NewMockWriteCloser(t)
 	fileWriter.SetupSuccessfulWrite(t, chunks)
@@ -221,9 +212,7 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	expectedMediaType := "application/pdf"
 	expectedFileExtension := ".pdf"
 	mockStream := fixture.CreateStoreFileStream(t)
-	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, sentFileName))
-	mockStream.SetupSendFile(t, chunks)
-	mockStream.SetupSendEndOfFile(t)
+	mockStream.SetupSuccessfulSend(t, sentFileName, chunks)
 	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.NewMockWriteCloser(t)
 	fileWriter.SetupSuccessfulWrite(t, chunks)
@@ -273,9 +262,7 @@ func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512Sn
 	expectedMediaType := "application/pdf"
 	expectedFileExtension := ".pdf"
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
-	mockStream.SetupSendFile(t, chunks)
-	mockStream.SetupSendEndOfFile(t)
+	mockStream.SetupSuccessfulSend(t, existingFileId, sentFileName, chunks)
 	recordActualResponse := mockStream.SetupSendAndClose(t)
 	fileWriter := ioFixture.NewMockWriteCloser(t)
 	fileWriter.SetupSuccessfulWrite(t, chunks)
@@ -313,8 +300,9 @@ func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512Sn
 }
 
 func TestStoreFile_CommunicationError_MetadataRequest_RetryIsRequested(t *testing.T) {
+	communicationError := errors.New("ups..someting went wrong")
 	mockStream := fixture.CreateStoreFileStream(t)
-	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
+	mockStream.SetupSendError(t, communicationError)
 
 	sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
 	actualError := sut.StoreFile(mockStream)
@@ -341,9 +329,10 @@ func TestStoreRevision_CommunicationError_MetadataRequest_RetryIsRequested(t *te
 }
 
 func TestStoreFile_CommunicationError_ChunckRequest_RetryIsRequested(t *testing.T) {
+	communicationError := errors.New("ups..someting went wrong")
 	mockStream := fixture.CreateStoreFileStream(t)
-	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataStoreFileRequestFromFileName(t, "test.txt"), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, "test.txt"))
+	mockStream.SetupSendError(t, communicationError)
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, ioFixture.NewMockWriteCloser(t))
 
@@ -361,10 +350,11 @@ func TestStoreFile_CommunicationError_ChunckRequest_RetryIsRequested(t *testing.
 }
 
 func TestStoreRevision_CommunicationError_ChunckRequest_RetryIsRequested(t *testing.T) {
+	communicationError := errors.New("ups..someting went wrong")
 	existingFileId := uuid.New()
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt"), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt"))
+	mockStream.SetupSendError(t, communicationError)
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, ioFixture.NewMockWriteCloser(t))
 
@@ -384,13 +374,12 @@ func TestStoreRevision_CommunicationError_ChunckRequest_RetryIsRequested(t *test
 func TestStoreFile_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T) {
 	file := fixture.TextFile()
 	chunks := [][]byte{file}
-
+	closeError := errors.New("ups..someting went wrong")
 	mockStream := fixture.CreateStoreFileStream(t)
-	// TODO use fixture here
-	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataStoreFileRequestFromFileName(t, "test.txt"), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(fixture.CreateChunkStoreFileRequest(t, file), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
-	mockStream.EXPECT().SendAndClose(mock.Anything).Return(errors.New("ups..someting went wrong")).Times(1)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, "test.txt"))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	mockStream.SetupSendAndCloseError(t, closeError)
 	fileWriter := ioFixture.NewMockWriteCloser(t)
 	fileWriter.SetupSuccessfulWrite(t, chunks)
 	mockFileRepository := NewMockFileRepository(t)
@@ -415,15 +404,15 @@ func TestStoreFile_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T
 }
 
 func TestStoreRevision_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T) {
+	communicationError := errors.New("ups..someting went wrong")
 	file := fixture.TextFile()
 	chunks := [][]byte{file}
 	existingFileId := uuid.New()
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	// TODO use fixture here
-	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt"), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(fixture.CreateChunkStoreRevisionRequest(t, file), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
-	mockStream.EXPECT().SendAndClose(mock.Anything).Return(errors.New("ups..someting went wrong")).Times(1)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt"))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	mockStream.SetupSendAndCloseError(t, communicationError)
 	fileWriter := ioFixture.NewMockWriteCloser(t)
 	fileWriter.SetupSuccessfulWrite(t, chunks)
 	mockFileRepository := NewMockFileRepository(t)
@@ -448,10 +437,9 @@ func TestStoreRevision_CommunicationError_SendAndClose_RetryIsRequested(t *testi
 }
 
 func TestStoreFile_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testing.T) {
+	chunks := [][]byte{fixture.TextFile()}
 	mockStream := fixture.CreateStoreFileStream(t)
-	firstRequest := fixture.CreateChunkStoreFileRequest(t, fixture.TextFile())
-	// TODO use fixture here
-	mockStream.EXPECT().Recv().Return(firstRequest, nil).Times(1)
+	mockStream.SetupSendFile(t, chunks)
 
 	sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
 	actualError := sut.StoreFile(mockStream)
@@ -463,10 +451,9 @@ func TestStoreFile_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testing.T)
 }
 
 func TestStoreRevision_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testing.T) {
+	chunks := [][]byte{fixture.TextFile()}
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	firstRequest := fixture.CreateChunkStoreRevisionRequest(t, fixture.TextFile())
-	// TODO use fixture here
-	mockStream.EXPECT().Recv().Return(firstRequest, nil).Times(1)
+	mockStream.SetupSendFile(t, chunks)
 
 	sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
 	actualError := sut.StoreRevision(mockStream)
@@ -479,10 +466,8 @@ func TestStoreRevision_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testin
 
 func TestStoreFile_InvalidRequest_MetadataIsSentTwice_FileIsRejected(t *testing.T) {
 	mockStream := fixture.CreateStoreFileStream(t)
-	firstRequest := fixture.CreateMetadataStoreFileRequestFromFileName(t, "test.txt")
-	mockStream.EXPECT().Recv().Return(firstRequest, nil).Times(1)
-	secondRequest := fixture.CreateMetadataStoreFileRequestFromFileName(t, "test2.txt")
-	mockStream.EXPECT().Recv().Return(secondRequest, nil).Times(1)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, "test.txt"))
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, "test2.txt"))
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, ioFixture.NewMockWriteCloser(t))
 
@@ -500,12 +485,9 @@ func TestStoreFile_InvalidRequest_MetadataIsSentTwice_FileIsRejected(t *testing.
 
 func TestStoreRevision_InvalidRequest_MetadataIsSentTwice_FileIsRejected(t *testing.T) {
 	existingFileId := uuid.New()
-	// TODO use fixture here
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	firstRequest := fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt")
-	mockStream.EXPECT().Recv().Return(firstRequest, nil).Times(1)
-	secondRequest := fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test2.txt")
-	mockStream.EXPECT().Recv().Return(secondRequest, nil).Times(1)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt"))
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test2.txt"))
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, ioFixture.NewMockWriteCloser(t))
 
@@ -527,7 +509,7 @@ func TestStoreFile_FileCreatingError_RetryRequested(t *testing.T) {
 	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, sentFileName))
 	mockStream.SetupSendFile(t, chunks)
 	mockFileRepository := NewMockFileRepository(t)
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New())).Return(nil, err).Times(1)
+	mockFileRepository.setupCreateFileError(t, err)
 
 	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreFile(mockStream)
@@ -548,8 +530,7 @@ func TestStoreRevision_FileCreatingError_RetryRequested(t *testing.T) {
 	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
 	mockStream.SetupSendFile(t, chunks)
 	mockFileRepository := NewMockFileRepository(t)
-	// TODO use fixture here
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, existingFileId, mock.IsType(uuid.New())).Return(nil, err).Times(1)
+	mockFileRepository.setupCreateFileError(t, err)
 
 	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreRevision(mockStream)
