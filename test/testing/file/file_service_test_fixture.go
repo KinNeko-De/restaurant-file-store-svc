@@ -1,114 +1,16 @@
 package file
 
 import (
-	"context"
 	"io"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
-	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 )
-
-func CreateStoreFileStream(t *testing.T) *MockFileService_StoreFileServer {
-	mockStream := NewMockFileService_StoreFileServer(t)
-
-	ctx := context.Background()
-	mockStream.EXPECT().Context().Return(ctx).Maybe()
-
-	return mockStream
-}
-
-func CreateStoreRevisionStream(t *testing.T) *MockFileService_StoreRevisionServer {
-	mockStream := NewMockFileService_StoreRevisionServer(t)
-
-	ctx := context.Background()
-	mockStream.EXPECT().Context().Return(ctx).Maybe()
-
-	return mockStream
-}
-
-func CreateMetadataStoreFileRequest(t *testing.T, fileName string) *v1.StoreFileRequest {
-	metadata := &v1.StoreFileRequest{
-		Part: &v1.StoreFileRequest_StoreFile{
-			StoreFile: &v1.StoreFile{
-				Name: fileName,
-			},
-		},
-	}
-	return metadata
-}
-
-func CreateMetadataStoreRevisionRequest(t *testing.T, fileId uuid.UUID, fileName string) *v1.StoreRevisionRequest {
-	metadata := &v1.StoreRevisionRequest{
-		Part: &v1.StoreRevisionRequest_StoreRevision{
-			StoreRevision: &v1.StoreRevision{
-				FileId: &protobuf.Uuid{
-					Value: fileId.String(),
-				},
-				StoreFile: &v1.StoreFile{
-					Name: fileName,
-				},
-			},
-		},
-	}
-	return metadata
-}
-
-func CreateChunkStoreFileRequest(t *testing.T, chunk []byte) *v1.StoreFileRequest {
-	chunkRequest := &v1.StoreFileRequest{
-		Part: &v1.StoreFileRequest_Chunk{
-			Chunk: chunk,
-		},
-	}
-	return chunkRequest
-}
-
-func CreateChunkStoreRevisionRequest(t *testing.T, chunk []byte) *v1.StoreRevisionRequest {
-	chunkRequest := &v1.StoreRevisionRequest{
-		Part: &v1.StoreRevisionRequest_Chunk{
-			Chunk: chunk,
-		},
-	}
-	return chunkRequest
-}
-
-func CreateValidStoreFileStream(t *testing.T, fileName string, fileChunks [][]byte) *MockFileService_StoreFileServer {
-	mockStream := CreateStoreFileStream(t)
-
-	metadata := CreateMetadataStoreFileRequest(t, fileName)
-	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
-
-	for _, chunk := range fileChunks {
-		chunkRequest := CreateChunkStoreFileRequest(t, chunk)
-		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
-	}
-
-	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
-
-	return mockStream
-}
-
-func CreateValidStoreRevisionStream(t *testing.T, existingFileId uuid.UUID, fileName string, fileChunks [][]byte) *MockFileService_StoreRevisionServer {
-	mockStream := CreateStoreRevisionStream(t)
-
-	metadata := CreateMetadataStoreRevisionRequest(t, existingFileId, fileName)
-	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
-
-	for _, chunk := range fileChunks {
-		chunkRequest := CreateChunkStoreRevisionRequest(t, chunk)
-		mockStream.EXPECT().Recv().Return(chunkRequest, nil).Times(1)
-	}
-
-	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
-
-	return mockStream
-}
 
 func CreateValidStoreFileStreamThatAbortsOnFileWrite(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *MockFileService_StoreFileServer {
 	mockStream := CreateStoreFileStream(t)
 
-	metadata := CreateMetadataStoreFileRequest(t, fileName)
+	metadata := CreateMetadataStoreFileRequestFromFileName(t, fileName)
 	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
 
 	for _, chunk := range successfulWritenfileChunks {
@@ -137,7 +39,7 @@ func CreateValidStoreRevisionStreamThatAbortsOnFileWrite(t *testing.T, fileId uu
 func CreateValidStoreFileStreamThatAbortsOnFileClose(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *MockFileService_StoreFileServer {
 	mockStream := CreateStoreFileStream(t)
 
-	metadata := CreateMetadataStoreFileRequest(t, fileName)
+	metadata := CreateMetadataStoreFileRequestFromFileName(t, fileName)
 	mockStream.EXPECT().Recv().Return(metadata, nil).Times(1)
 
 	for _, chunk := range successfulWritenfileChunks {
