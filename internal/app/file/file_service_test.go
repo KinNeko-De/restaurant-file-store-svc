@@ -526,7 +526,7 @@ func TestStoreFile_FileCreatingError_RetryRequested(t *testing.T) {
 	mockStream := fixture.CreateStoreFileStream(t)
 	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, sentFileName))
 	mockStream.SetupSendFile(t, chunks)
-	mockFileRepository := &MockFileRepository{}
+	mockFileRepository := NewMockFileRepository(t)
 	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New())).Return(nil, err).Times(1)
 
 	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
@@ -547,7 +547,7 @@ func TestStoreRevision_FileCreatingError_RetryRequested(t *testing.T) {
 	mockStream := fixture.CreateStoreRevisionStream(t)
 	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
 	mockStream.SetupSendFile(t, chunks)
-	mockFileRepository := &MockFileRepository{}
+	mockFileRepository := NewMockFileRepository(t)
 	// TODO use fixture here
 	mockFileRepository.EXPECT().CreateFile(mock.Anything, existingFileId, mock.IsType(uuid.New())).Return(nil, err).Times(1)
 
