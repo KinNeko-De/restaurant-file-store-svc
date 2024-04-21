@@ -22,7 +22,7 @@ func CreateDownloadFileStream(t *testing.T) *FileService_DownloadFileServer {
 
 func CreateDownloadFileRequestFromUuid(t *testing.T, fileId uuid.UUID) *apiRestaurantFile.DownloadFileRequest {
 	requestedFileId, err := apiProtobuf.ToProtobuf(fileId)
-	require.NotNil(t, err)
+	require.Nil(t, err)
 	return CreateDownloadFileRequest(t, requestedFileId)
 }
 
