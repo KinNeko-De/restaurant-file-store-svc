@@ -1079,8 +1079,8 @@ func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *tes
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	mockStream := fixture.CreateDownloadFileStream(t)
-	recordStoredFileMetadata := fixture.SetupRecordStoredFileMetadata(t, mockStream)
-	recordDownloadedFile := fixture.SetupRecordDownloadedFile(t, mockStream)
+	recordStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordDownloadedFile := mockStream.SetupRecordDownloadedFile(t)
 
 	actualError := sut.DownloadFile(request, mockStream)
 

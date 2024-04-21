@@ -33,7 +33,7 @@ func CreateDownloadFileRequest(t *testing.T, requestedFileId *apiProtobuf.Uuid) 
 	return request
 }
 
-func SetupRecordDownloadedFile(t *testing.T, mockStream *MockFileService_DownloadFileServer) func() []byte {
+func (mockStream *MockFileService_DownloadFileServer) SetupRecordDownloadedFile(t *testing.T) func() []byte {
 	actualFile := make([]byte, 0)
 	mockStream.EXPECT().Send(mock.Anything).Run(func(response *apiRestaurantFile.DownloadFileResponse) {
 		actualFile = append(actualFile, response.GetChunk()...)
@@ -43,7 +43,7 @@ func SetupRecordDownloadedFile(t *testing.T, mockStream *MockFileService_Downloa
 	}
 }
 
-func SetupRecordStoredFileMetadata(t *testing.T, mockStream *MockFileService_DownloadFileServer) func() *apiRestaurantFile.StoredFileMetadata {
+func (mockStream *MockFileService_DownloadFileServer) SetupRecordStoredFileMetadata(t *testing.T) func() *apiRestaurantFile.StoredFileMetadata {
 	actualStoredFileMetadata := &apiRestaurantFile.StoredFileMetadata{}
 	mockStream.EXPECT().Send(mock.Anything).Run(func(response *apiRestaurantFile.DownloadFileResponse) {
 		actualStoredFileMetadata = response.GetMetadata()
