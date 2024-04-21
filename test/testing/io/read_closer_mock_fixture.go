@@ -7,14 +7,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func CreateReadCloser(t *testing.T, readFile []byte) *MockReadCloser {
-	fileReader := &MockReadCloser{}
-	setupReadOfFile(fileReader, readFile)
-	fileReader.EXPECT().Close().Return(nil).Times(1)
-	return fileReader
+func (fileReader *MockReadCloser) SetupSuccessfulRead(t *testing.T, readFile []byte) {
+	fileReader.SetupRead(t, readFile)
+	fileReader.SetupClose(t)
 }
 
-func setupReadOfFile(fileReader *MockReadCloser, readFile []byte) {
+func (fileReader *MockReadCloser) SetupRead(t *testing.T, readFile []byte) {
 	readIndex := 0
 	fileReader.EXPECT().Read(mock.Anything).RunAndReturn(func(data []byte) (int, error) {
 		if readIndex >= len(readFile) {
@@ -30,15 +28,14 @@ func setupReadOfFile(fileReader *MockReadCloser, readFile []byte) {
 	})
 }
 
-func CreateReadCloserRanIntoReadError(t *testing.T, errorAfterSuccessfulRead error) *MockReadCloser {
-	fileReader := &MockReadCloser{}
-	fileReader.EXPECT().Read(mock.Anything).Return(0, errorAfterSuccessfulRead).Times(1)
-	return fileReader
+func (fileReader *MockReadCloser) SetupReadError(t *testing.T, readError error) {
+	fileReader.EXPECT().Read(mock.Anything).Return(0, readError).Times(1)
 }
 
-func CreateReadCloserRanIntoCloseError(t *testing.T, readFile []byte, closeErr error) *MockReadCloser {
-	fileReader := &MockReadCloser{}
-	setupReadOfFile(fileReader, readFile)
+func (fileReader *MockReadCloser) SetupClose(t *testing.T) {
+	fileReader.EXPECT().Close().Return(nil).Times(1)
+}
+
+func (fileReader *MockReadCloser) SetupCloseError(t *testing.T, closeErr error) {
 	fileReader.EXPECT().Close().Return(closeErr).Times(1)
-	return fileReader
 }
