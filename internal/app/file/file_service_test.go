@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
-	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
+	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/file"
 	ioFixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/io"
 	"github.com/stretchr/testify/assert"
@@ -713,9 +713,9 @@ func TestStoreRevision_FileIdNotFound(t *testing.T) {
 }
 
 func TestStoreRevision_FileIdIsNil(t *testing.T) {
-	request := &v1.StoreRevisionRequest{
-		Part: &v1.StoreRevisionRequest_StoreRevision{
-			StoreRevision: &v1.StoreRevision{
+	request := &apiRestaurantFile.StoreRevisionRequest{
+		Part: &apiRestaurantFile.StoreRevisionRequest_StoreRevision{
+			StoreRevision: &apiRestaurantFile.StoreRevision{
 				FileId: nil,
 			},
 		},
@@ -736,9 +736,9 @@ func TestStoreRevision_FileIdIsNil(t *testing.T) {
 func TestStoreRevision_FileIdIsInvalid(t *testing.T) {
 	invalidUuid := "433b4b7c-4b1e-4b1e4b1e4b1e"
 
-	request := &v1.StoreRevisionRequest{
-		Part: &v1.StoreRevisionRequest_StoreRevision{
-			StoreRevision: &v1.StoreRevision{
+	request := &apiRestaurantFile.StoreRevisionRequest{
+		Part: &apiRestaurantFile.StoreRevisionRequest_StoreRevision{
+			StoreRevision: &apiRestaurantFile.StoreRevision{
 				FileId: &protobuf.Uuid{
 					Value: invalidUuid,
 				},
@@ -1026,7 +1026,7 @@ func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *tes
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualFile := make([]byte, 0)
-	mockStream.EXPECT().Send(mock.Anything).Run(func(response *v1.DownloadFileResponse) {
+	mockStream.EXPECT().Send(mock.Anything).Run(func(response *apiRestaurantFile.DownloadFileResponse) {
 		actualFile = append(actualFile, response.GetChunk()...)
 	}).Return(nil)
 	actualError := sut.DownloadFile(request, mockStream)
