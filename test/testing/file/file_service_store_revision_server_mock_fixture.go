@@ -30,33 +30,16 @@ func CreateMetadataStoreRevisionRequestFromFileName(t *testing.T, fileId uuid.UU
 		},
 	}
 
-	return CreateMetadataRevisionFileRequest(t, storeRevision)
+	return CreateMetadataStoreRevisionRequest(t, storeRevision)
 }
 
-// TODO write test that uses this function
-func CreateMetadataRevisionFileRequest(t *testing.T, storeRevision *apiRestaurantFile.StoreRevision) *apiRestaurantFile.StoreRevisionRequest {
+func CreateMetadataStoreRevisionRequest(t *testing.T, storeRevision *apiRestaurantFile.StoreRevision) *apiRestaurantFile.StoreRevisionRequest {
 	request := &apiRestaurantFile.StoreRevisionRequest{
 		Part: &apiRestaurantFile.StoreRevisionRequest_StoreRevision{
 			StoreRevision: storeRevision,
 		},
 	}
 	return request
-}
-
-func CreateMetadataStoreRevisionRequest(t *testing.T, fileId uuid.UUID, fileName string) *apiRestaurantFile.StoreRevisionRequest {
-	metadata := &apiRestaurantFile.StoreRevisionRequest{
-		Part: &apiRestaurantFile.StoreRevisionRequest_StoreRevision{
-			StoreRevision: &apiRestaurantFile.StoreRevision{
-				FileId: &apiProtobuf.Uuid{
-					Value: fileId.String(),
-				},
-				StoreFile: &apiRestaurantFile.StoreFile{
-					Name: fileName,
-				},
-			},
-		},
-	}
-	return metadata
 }
 
 func CreateChunkStoreRevisionRequest(t *testing.T, chunk []byte) *apiRestaurantFile.StoreRevisionRequest {

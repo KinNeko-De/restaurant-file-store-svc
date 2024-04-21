@@ -353,7 +353,7 @@ func TestStoreRevision_CommunicationError_ChunckRequest_RetryIsRequested(t *test
 	communicationError := errors.New("ups..someting went wrong")
 	existingFileId := uuid.New()
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt"))
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, "test.txt"))
 	mockStream.SetupSendError(t, communicationError)
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, ioFixture.NewMockWriteCloser(t))
@@ -409,7 +409,7 @@ func TestStoreRevision_CommunicationError_SendAndClose_RetryIsRequested(t *testi
 	chunks := [][]byte{file}
 	existingFileId := uuid.New()
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt"))
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, "test.txt"))
 	mockStream.SetupSendFile(t, chunks)
 	mockStream.SetupSendEndOfFile(t)
 	mockStream.SetupSendAndCloseError(t, communicationError)
@@ -486,8 +486,8 @@ func TestStoreFile_InvalidRequest_MetadataIsSentTwice_FileIsRejected(t *testing.
 func TestStoreRevision_InvalidRequest_MetadataIsSentTwice_FileIsRejected(t *testing.T) {
 	existingFileId := uuid.New()
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt"))
-	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test2.txt"))
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, "test.txt"))
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, "test2.txt"))
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, ioFixture.NewMockWriteCloser(t))
 
@@ -712,13 +712,10 @@ func TestStoreRevision_FileIdNotFound(t *testing.T) {
 }
 
 func TestStoreRevision_FileIdIsNil(t *testing.T) {
-	request := &apiRestaurantFile.StoreRevisionRequest{
-		Part: &apiRestaurantFile.StoreRevisionRequest_StoreRevision{
-			StoreRevision: &apiRestaurantFile.StoreRevision{
-				FileId: nil,
-			},
-		},
+	storeRevision := &apiRestaurantFile.StoreRevision{
+		FileId: nil,
 	}
+	request := fixture.CreateMetadataStoreRevisionRequest(t, storeRevision)
 	mockStream := fixture.CreateStoreRevisionStream(t)
 	mockStream.SetupSendMetadata(t, request)
 
@@ -734,16 +731,12 @@ func TestStoreRevision_FileIdIsNil(t *testing.T) {
 
 func TestStoreRevision_FileIdIsInvalid(t *testing.T) {
 	invalidUuid := "433b4b7c-4b1e-4b1e4b1e4b1e"
-
-	request := &apiRestaurantFile.StoreRevisionRequest{
-		Part: &apiRestaurantFile.StoreRevisionRequest_StoreRevision{
-			StoreRevision: &apiRestaurantFile.StoreRevision{
-				FileId: &protobuf.Uuid{
-					Value: invalidUuid,
-				},
-			},
+	storeRevision := &apiRestaurantFile.StoreRevision{
+		FileId: &protobuf.Uuid{
+			Value: invalidUuid,
 		},
 	}
+	request := fixture.CreateMetadataStoreRevisionRequest(t, storeRevision)
 	mockStream := fixture.CreateStoreRevisionStream(t)
 	mockStream.SetupSendMetadata(t, request)
 
