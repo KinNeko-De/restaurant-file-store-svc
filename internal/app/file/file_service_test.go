@@ -29,9 +29,8 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	expectedSize := uint64(4)
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedFileExtension := ".txt"
-	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
-	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
+	recordActualResponse := fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream)
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
@@ -51,6 +50,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	assert.Equal(t, uuid.Version(0x4), actualStoredRevisionId.Version())
 	assert.Equal(t, uuid.RFC4122, actualStoredRevisionId.Variant())
 
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
@@ -127,9 +127,8 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	sentFileName := "test.pdf"
 	expectedSize := uint64(512)
 	expectedMediaType := "application/pdf"
-	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
-	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
+	recordActualResponse := fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream)
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
@@ -141,6 +140,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 
 	assert.Nil(t, actualError)
 
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFileMetadata)
 	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
@@ -201,9 +201,8 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	expectedSize := uint64(51124)
 	expectedMediaType := "application/pdf"
 	expectedFileExtension := ".pdf"
-	var actualResponse *apiRestaurantFile.StoreFileResponse
 	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, chunks)
-	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
+	recordActualResponse := fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream)
 	fileWriter := ioFixture.CreateWriterCloser(t, chunks)
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
@@ -215,6 +214,7 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 
 	assert.Nil(t, actualError)
 
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)

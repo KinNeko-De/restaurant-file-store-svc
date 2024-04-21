@@ -167,12 +167,6 @@ func CreateValidStoreRevisionStreamThatAbortsOnFileClose(t *testing.T, fileId uu
 	return mockStream
 }
 
-func SetupAndRecordSuccessfulStoreFileResponse(t *testing.T, mockStream *MockFileService_StoreFileServer, actualResponse **v1.StoreFileResponse) {
-	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
-		*actualResponse = response
-	}).Return(nil).Times(1)
-}
-
 func SetupAndRecordSuccessfulStoreRevisionResponse(t *testing.T, mockStream *MockFileService_StoreRevisionServer, actualResponse **v1.StoreFileResponse) {
 	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
 		*actualResponse = response
