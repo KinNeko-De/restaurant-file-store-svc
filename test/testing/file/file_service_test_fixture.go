@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func CreateStoreFileStream(t *testing.T) *FileService_StoreFileServer {
-	mockStream := NewFileService_StoreFileServer(t)
+func CreateStoreFileStream(t *testing.T) *MockFileService_StoreFileServer {
+	mockStream := NewMockFileService_StoreFileServer(t)
 
 	ctx := context.Background()
 	mockStream.EXPECT().Context().Return(ctx).Maybe()
@@ -20,8 +20,8 @@ func CreateStoreFileStream(t *testing.T) *FileService_StoreFileServer {
 	return mockStream
 }
 
-func CreateStoreRevisionStream(t *testing.T) *FileService_StoreRevisionServer {
-	mockStream := NewFileService_StoreRevisionServer(t)
+func CreateStoreRevisionStream(t *testing.T) *MockFileService_StoreRevisionServer {
+	mockStream := NewMockFileService_StoreRevisionServer(t)
 
 	ctx := context.Background()
 	mockStream.EXPECT().Context().Return(ctx).Maybe()
@@ -74,7 +74,7 @@ func CreateChunkStoreRevisionRequest(t *testing.T, chunk []byte) *v1.StoreRevisi
 	return chunkRequest
 }
 
-func CreateValidStoreFileStream(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
+func CreateValidStoreFileStream(t *testing.T, fileName string, fileChunks [][]byte) *MockFileService_StoreFileServer {
 	mockStream := CreateStoreFileStream(t)
 
 	metadata := CreateMetadataStoreFileRequest(t, fileName)
@@ -90,7 +90,7 @@ func CreateValidStoreFileStream(t *testing.T, fileName string, fileChunks [][]by
 	return mockStream
 }
 
-func CreateValidStoreRevisionStream(t *testing.T, existingFileId uuid.UUID, fileName string, fileChunks [][]byte) *FileService_StoreRevisionServer {
+func CreateValidStoreRevisionStream(t *testing.T, existingFileId uuid.UUID, fileName string, fileChunks [][]byte) *MockFileService_StoreRevisionServer {
 	mockStream := CreateStoreRevisionStream(t)
 
 	metadata := CreateMetadataStoreRevisionRequest(t, existingFileId, fileName)
@@ -106,7 +106,7 @@ func CreateValidStoreRevisionStream(t *testing.T, existingFileId uuid.UUID, file
 	return mockStream
 }
 
-func CreateValidStoreFileStreamThatAbortsOnFileWrite(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
+func CreateValidStoreFileStreamThatAbortsOnFileWrite(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *MockFileService_StoreFileServer {
 	mockStream := CreateStoreFileStream(t)
 
 	metadata := CreateMetadataStoreFileRequest(t, fileName)
@@ -120,7 +120,7 @@ func CreateValidStoreFileStreamThatAbortsOnFileWrite(t *testing.T, fileName stri
 	return mockStream
 }
 
-func CreateValidStoreRevisionStreamThatAbortsOnFileWrite(t *testing.T, fileId uuid.UUID, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreRevisionServer {
+func CreateValidStoreRevisionStreamThatAbortsOnFileWrite(t *testing.T, fileId uuid.UUID, fileName string, successfulWritenfileChunks [][]byte) *MockFileService_StoreRevisionServer {
 	// TODO reorganzie/rename this as is has nothing to do with file write
 	mockStream := CreateStoreRevisionStream(t)
 
@@ -135,7 +135,7 @@ func CreateValidStoreRevisionStreamThatAbortsOnFileWrite(t *testing.T, fileId uu
 	return mockStream
 }
 
-func CreateValidStoreFileStreamThatAbortsOnFileClose(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreFileServer {
+func CreateValidStoreFileStreamThatAbortsOnFileClose(t *testing.T, fileName string, successfulWritenfileChunks [][]byte) *MockFileService_StoreFileServer {
 	mockStream := CreateStoreFileStream(t)
 
 	metadata := CreateMetadataStoreFileRequest(t, fileName)
@@ -151,7 +151,7 @@ func CreateValidStoreFileStreamThatAbortsOnFileClose(t *testing.T, fileName stri
 	return mockStream
 }
 
-func CreateValidStoreRevisionStreamThatAbortsOnFileClose(t *testing.T, fileId uuid.UUID, fileName string, successfulWritenfileChunks [][]byte) *FileService_StoreRevisionServer {
+func CreateValidStoreRevisionStreamThatAbortsOnFileClose(t *testing.T, fileId uuid.UUID, fileName string, successfulWritenfileChunks [][]byte) *MockFileService_StoreRevisionServer {
 	mockStream := CreateStoreRevisionStream(t)
 
 	metadata := CreateMetadataStoreRevisionRequest(t, fileId, fileName)
@@ -167,13 +167,13 @@ func CreateValidStoreRevisionStreamThatAbortsOnFileClose(t *testing.T, fileId uu
 	return mockStream
 }
 
-func SetupAndRecordSuccessfulStoreFileResponse(t *testing.T, mockStream *FileService_StoreFileServer, actualResponse **v1.StoreFileResponse) {
+func SetupAndRecordSuccessfulStoreFileResponse(t *testing.T, mockStream *MockFileService_StoreFileServer, actualResponse **v1.StoreFileResponse) {
 	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
 		*actualResponse = response
 	}).Return(nil).Times(1)
 }
 
-func SetupAndRecordSuccessfulStoreRevisionResponse(t *testing.T, mockStream *FileService_StoreRevisionServer, actualResponse **v1.StoreFileResponse) {
+func SetupAndRecordSuccessfulStoreRevisionResponse(t *testing.T, mockStream *MockFileService_StoreRevisionServer, actualResponse **v1.StoreFileResponse) {
 	mockStream.EXPECT().SendAndClose(mock.Anything).Run(func(response *v1.StoreFileResponse) {
 		*actualResponse = response
 	}).Return(nil).Times(1)

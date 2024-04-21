@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func CreateDownloadFileStream(t *testing.T) *FileService_DownloadFileServer {
-	mockStream := NewFileService_DownloadFileServer(t)
+func CreateDownloadFileStream(t *testing.T) *MockFileService_DownloadFileServer {
+	mockStream := NewMockFileService_DownloadFileServer(t)
 
 	ctx := context.Background()
 	mockStream.EXPECT().Context().Return(ctx).Maybe()
@@ -33,7 +33,7 @@ func CreateDownloadFileRequest(t *testing.T, requestedFileId *apiProtobuf.Uuid) 
 	return request
 }
 
-func SetupRecordDownloadedFile(t *testing.T, mockStream *FileService_DownloadFileServer) func() []byte {
+func SetupRecordDownloadedFile(t *testing.T, mockStream *MockFileService_DownloadFileServer) func() []byte {
 	actualFile := make([]byte, 0)
 	mockStream.EXPECT().Send(mock.Anything).Run(func(response *apiRestaurantFile.DownloadFileResponse) {
 		actualFile = append(actualFile, response.GetChunk()...)
@@ -43,7 +43,7 @@ func SetupRecordDownloadedFile(t *testing.T, mockStream *FileService_DownloadFil
 	}
 }
 
-func SetupRecordStoredFileMetadata(t *testing.T, mockStream *FileService_DownloadFileServer) func() *apiRestaurantFile.StoredFileMetadata {
+func SetupRecordStoredFileMetadata(t *testing.T, mockStream *MockFileService_DownloadFileServer) func() *apiRestaurantFile.StoredFileMetadata {
 	actualStoredFileMetadata := &apiRestaurantFile.StoredFileMetadata{}
 	mockStream.EXPECT().Send(mock.Anything).Run(func(response *apiRestaurantFile.DownloadFileResponse) {
 		actualStoredFileMetadata = response.GetMetadata()
