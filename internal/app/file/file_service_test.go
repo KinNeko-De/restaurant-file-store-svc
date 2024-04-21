@@ -791,9 +791,7 @@ func TestStoreRevision_StoreFileMetadataThrowsError_RetryRequested(t *testing.T)
 }
 
 func TestDownloadFile_FileIdIsNil(t *testing.T) {
-	request := &v1.DownloadFileRequest{
-		FileId: nil,
-	}
+	request := fixture.CreateDownloadFileRequest(t, nil)
 
 	mockStream := fixture.CreateDownloadFileStream(t)
 	sut := createSut(t, nil, nil)
@@ -819,11 +817,10 @@ func TestDownloadFile_FileIdIsInvalid(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := &apiRestaurantFile.DownloadFileRequest{
-				FileId: &protobuf.Uuid{
-					Value: test.uuid,
-				},
+			fileId := &protobuf.Uuid{
+				Value: test.uuid,
 			}
+			request := fixture.CreateDownloadFileRequest(t, fileId)
 
 			mockStream := fixture.CreateDownloadFileStream(t)
 			sut := createSut(t, nil, nil)
@@ -854,8 +851,7 @@ func TestDownloadFile_FileIdNotFound(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fileId := uuid.New()
-			requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-			request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+			request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 
 			mockFileMetadataRepository := &MockFileMetadataRepository{}
 			mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(FileMetadata{}, test.notFoundError).Times(1)
@@ -877,8 +873,7 @@ func TestDownloadFile_FileIdNotFound(t *testing.T) {
 
 func TestDownloadFile_ErrorFetchingMetadataThatIsNotSameAsNotFoundError(t *testing.T) {
 	fileId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 
 	mockFileMetadataRepository := &MockFileMetadataRepository{}
 	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(FileMetadata{}, errors.New("ups..someting went wrong")).Times(1)
@@ -898,8 +893,7 @@ func TestDownloadFile_ErrorFetchingMetadataThatIsNotSameAsNotFoundError(t *testi
 func TestDownloadFile_SendMetadataFails(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	sendErr := errors.New("send error due to network connection as example")
 
 	fileMetadata := FileMetadata{
@@ -934,8 +928,7 @@ func TestDownloadFile_SendMetadataFails(t *testing.T) {
 func TestDownloadFile_FindingTheFileBytesFails(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	openErr := errors.New("open error because file disapperred most likey due someone fuckeled around manually")
 
 	fileMetadata := FileMetadata{
@@ -971,8 +964,7 @@ func TestDownloadFile_FindingTheFileBytesFails(t *testing.T) {
 func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	readErr := errors.New("read error due to network connection as example")
 
 	fileMetadata := FileMetadata{
@@ -1009,8 +1001,7 @@ func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	file := fixture.TextFile()
 	closeErr := errors.New("close error due to network connection as example")
 
@@ -1132,7 +1123,6 @@ func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *tes
 	assert.Equal(t, latestedRevision.MediaType, actualStoredFileMetadata.MediaType)
 	assert.Equal(t, latestedRevision.Size, actualStoredFileMetadata.Size)
 	assert.Equal(t, latestedRevision.CreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
-	recordDownloadedFile()
 	assert.Equal(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc, recordDownloadedFile())
 }
 

@@ -4,8 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func CreateDownloadFileStream(t *testing.T) *FileService_DownloadFileServer {
@@ -15,6 +18,19 @@ func CreateDownloadFileStream(t *testing.T) *FileService_DownloadFileServer {
 	mockStream.EXPECT().Context().Return(ctx).Maybe()
 
 	return mockStream
+}
+
+func CreateDownloadFileRequestFromUuid(t *testing.T, fileId uuid.UUID) *apiRestaurantFile.DownloadFileRequest {
+	requestedFileId, err := apiProtobuf.ToProtobuf(fileId)
+	require.NotNil(t, err)
+	return CreateDownloadFileRequest(t, requestedFileId)
+}
+
+func CreateDownloadFileRequest(t *testing.T, requestedFileId *apiProtobuf.Uuid) *apiRestaurantFile.DownloadFileRequest {
+	request := &apiRestaurantFile.DownloadFileRequest{
+		FileId: requestedFileId,
+	}
+	return request
 }
 
 func SetupRecordDownloadedFile(t *testing.T, mockStream *FileService_DownloadFileServer) func() []byte {

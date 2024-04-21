@@ -74,13 +74,6 @@ func CreateChunkStoreRevisionRequest(t *testing.T, chunk []byte) *v1.StoreRevisi
 	return chunkRequest
 }
 
-func CreateDownloadFileRequest(t *testing.T, fileId *protobuf.Uuid) *v1.DownloadFileRequest {
-	request := &v1.DownloadFileRequest{
-		FileId: fileId,
-	}
-	return request
-}
-
 func CreateValidStoreFileStream(t *testing.T, fileName string, fileChunks [][]byte) *FileService_StoreFileServer {
 	mockStream := CreateStoreFileStream(t)
 
