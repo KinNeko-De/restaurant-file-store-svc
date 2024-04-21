@@ -15,7 +15,6 @@ import (
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/file"
 	ioFixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/io"
 	"github.com/stretchr/testify/assert"
-	mock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -1022,39 +1021,48 @@ func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *tes
 	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	file := fixture.TextFile()
 	closeErr := errors.New("close error due to network connection as example")
+	expectedExtension := ".txt"
+	expectedMediaType := "text/plain; charset=utf-8"
+	expectedSize := uint64(1024)
+	expectedCreatedAt := time.Now().UTC()
 
 	fileMetadata := FileMetadata{
 		Id: fileId,
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: ".txt",
-				MediaType: "text/plain; charset=utf-8",
-				Size:      1024,
-				CreatedAt: time.Now().UTC(),
+				Extension: expectedExtension,
+				MediaType: expectedMediaType,
+				Size:      expectedSize,
+				CreatedAt: expectedCreatedAt,
 			},
 		},
 	}
 
 	mockStream := fixture.CreateDownloadFileStream(t)
+	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordActualDownloadedFile := mockStream.SetupRecordDownloadedFile(t)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
 	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
-	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1) // metadata are sent
-	mockFileRepository := NewMockFileRepository(t)
 	mockReader := ioFixture.NewMockReadCloser(t)
 	mockReader.SetupRead(t, file)
 	mockReader.SetupCloseError(t, closeErr)
-	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(mockReader, nil).Times(1)
+	mockFileRepository := NewMockFileRepository(t)
+	mockFileRepository.setupOpenFileExistingFile(t, fileId, revisionId, mockReader)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
-	actualFile := make([]byte, 0)
-	mockStream.EXPECT().Send(mock.Anything).Run(func(response *apiRestaurantFile.DownloadFileResponse) {
-		actualFile = append(actualFile, response.GetChunk()...)
-	}).Return(nil)
 	actualError := sut.DownloadFile(request, mockStream)
 
 	assert.Nil(t, actualError)
-	assert.Equal(t, file, actualFile)
+	actualStoredFileMetadata := recordActualStoredFileMetadata()
+	assert.NotNil(t, actualStoredFileMetadata)
+	// TODO Assert the metadata contains the right file id as soon as the api is updated
+	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
+	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
+	assert.Equal(t, expectedSize, actualStoredFileMetadata.Size)
+	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	assert.Equal(t, file, recordActualDownloadedFile())
+
 }
 
 func TestDownloadFile_SendFileBytesFails(t *testing.T) {
