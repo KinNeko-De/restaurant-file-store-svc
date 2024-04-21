@@ -26,7 +26,6 @@ func CreateMetadataStoreFileRequestFromFileName(t *testing.T, fileName string) *
 	return CreateMetadataStoreFileRequest(t, sentFileName)
 }
 
-// TODO write test that uses this function
 func CreateMetadataStoreFileRequest(t *testing.T, storeFile *apiRestaurantFile.StoreFile) *apiRestaurantFile.StoreFileRequest {
 	metadata := &apiRestaurantFile.StoreFileRequest{
 		Part: &apiRestaurantFile.StoreFileRequest_StoreFile{
