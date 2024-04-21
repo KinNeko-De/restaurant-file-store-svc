@@ -6,8 +6,26 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func CreateWriterCloser(t *testing.T, writtenChunks [][]byte) *MockWriteCloser {
-	fileWriter := &MockWriteCloser{}
+func (mockWriteCloser *MockWriteCloser) SetupWrite(t *testing.T, writtenChunks [][]byte) {
+	for _, chunk := range writtenChunks {
+		mockWriteCloser.EXPECT().Write(chunk).Return(len(chunk), nil).Times(1)
+	}
+}
+
+func (mockWriteCloser *MockWriteCloser) SetupWriteError(t *testing.T, writeError error) {
+	mockWriteCloser.EXPECT().Write(mock.Anything).Return(0, writeError).Times(1)
+}
+
+func (mockWriteCloser *MockWriteCloser) SetupClose(t *testing.T) {
+	mockWriteCloser.EXPECT().Close().Return(nil).Times(1)
+}
+
+func (mockWriteCloser *MockWriteCloser) SetupCloseError(t *testing.T, writeError error) {
+	mockWriteCloser.EXPECT().Close().Return(writeError).Times(1)
+}
+
+func CreateWriterCloser2(t *testing.T, writtenChunks [][]byte) *MockWriteCloser {
+	fileWriter := NewMockWriteCloser(t)
 	for _, chunk := range writtenChunks {
 		fileWriter.EXPECT().Write(chunk).Return(len(chunk), nil).Times(1)
 	}
@@ -15,8 +33,8 @@ func CreateWriterCloser(t *testing.T, writtenChunks [][]byte) *MockWriteCloser {
 	return fileWriter
 }
 
-func CreateWriterCloserRanIntoWriteError(t *testing.T, successfulWrittenChunks [][]byte, errorAfterSuccessfulWrites error) *MockWriteCloser {
-	fileWriter := &MockWriteCloser{}
+func CreateWriterCloserRanIntoWriteError2(t *testing.T, successfulWrittenChunks [][]byte, errorAfterSuccessfulWrites error) *MockWriteCloser {
+	fileWriter := NewMockWriteCloser(t)
 	for _, chunk := range successfulWrittenChunks {
 		fileWriter.EXPECT().Write(chunk).Return(len(chunk), nil).Times(1)
 	}
@@ -26,8 +44,8 @@ func CreateWriterCloserRanIntoWriteError(t *testing.T, successfulWrittenChunks [
 	return fileWriter
 }
 
-func CreateWriterCloserRanIntoCloseError(t *testing.T, writtenChunks [][]byte, err error) *MockWriteCloser {
-	fileWriter := &MockWriteCloser{}
+func CreateWriterCloserRanIntoCloseError2(t *testing.T, writtenChunks [][]byte, err error) *MockWriteCloser {
+	fileWriter := NewMockWriteCloser(t)
 	for _, chunk := range writtenChunks {
 		fileWriter.EXPECT().Write(chunk).Return(len(chunk), nil).Times(1)
 	}
