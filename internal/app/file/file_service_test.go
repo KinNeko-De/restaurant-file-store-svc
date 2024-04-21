@@ -318,7 +318,6 @@ func TestStoreFile_CommunicationError_ChunckRequest_RetryIsRequested(t *testing.
 	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataStoreFileRequest(t, "test.txt"), nil).Times(1)
 	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
 	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
-	var storedFileMetadata *FileMetadata
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
 
@@ -330,7 +329,6 @@ func TestStoreFile_CommunicationError_ChunckRequest_RetryIsRequested(t *testing.
 	assert.True(t, ok, "Expected a gRPC status error")
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
-	assert.Nil(t, storedFileMetadata)
 	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
 	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
 	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
@@ -493,7 +491,6 @@ func TestStoreRevision_InvalidRequest_MetadataIsSentTwice_FileIsRejected(t *test
 func TestStoreFile_FileCreatingError_RetryRequested(t *testing.T) {
 	err := errors.New("Error creating file")
 	sentFileName := "test.txt"
-	var storedFileMetadata *FileMetadata
 	mockStream := fixture.CreateValidStoreFileStreamThatAbortsOnFileWrite(t, sentFileName, [][]byte{})
 	mockFileRepository := &MockFileRepository{}
 	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New())).Return(nil, err).Times(1)
@@ -506,7 +503,6 @@ func TestStoreFile_FileCreatingError_RetryRequested(t *testing.T) {
 	assert.True(t, ok, "Expected a gRPC status error")
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "create")
-	assert.Nil(t, storedFileMetadata)
 }
 
 func TestStoreRevision_FileCreatingError_RetryRequested(t *testing.T) {
@@ -574,7 +570,6 @@ func TestStoreFile_FileClosingError_RetryRequested(t *testing.T) {
 	err := errors.New("Error closing file")
 	sentFile := fixture.TextFile()
 	sentFileName := "test.txt"
-	var storedFileMetadata *FileMetadata
 	mockStream := fixture.CreateValidStoreFileStreamThatAbortsOnFileClose(t, sentFileName, [][]byte{sentFile})
 	fileWriter := ioFixture.CreateWriterCloserRanIntoCloseError(t, [][]byte{sentFile}, err)
 	mockFileRepository := NewMockFileRepository(t)
@@ -588,7 +583,6 @@ func TestStoreFile_FileClosingError_RetryRequested(t *testing.T) {
 	assert.True(t, ok, "Expected a gRPC status error")
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "close")
-	assert.Nil(t, storedFileMetadata)
 	actualStoredFileId, actualStoredRevisionId := recordStoredIds()
 	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
 	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
