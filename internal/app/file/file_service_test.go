@@ -298,6 +298,59 @@ func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512Sn
 	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
 }
 
+func TestStoreFile_FileNameIsInvalid_FileIsRejected(t *testing.T) {
+	tests := []struct {
+		name     string
+		fileName string
+	}{
+		{"Empty", ""},
+		{"NoFileExtension", "ineedanextension"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mockStream := fixture.CreateStoreFileStream(t)
+			mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, test.fileName))
+
+			sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
+			actualError := sut.StoreFile(mockStream)
+
+			assert.NotNil(t, actualError)
+			actualStatus, ok := status.FromError(actualError)
+			assert.True(t, ok, "Expected a gRPC status error")
+			assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), test.fileName)
+		})
+	}
+}
+
+func TestStoreRevision_FileNameIsInvalid_FileIsRejected(t *testing.T) {
+	tests := []struct {
+		name     string
+		fileName string
+	}{
+		{"Empty", ""},
+		{"NoFileExtension", "ineedanextension"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			existingFileId := uuid.New()
+			mockStream := fixture.CreateStoreRevisionStream(t)
+			mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, test.fileName))
+
+			sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
+			actualError := sut.StoreRevision(mockStream)
+
+			assert.NotNil(t, actualError)
+			actualStatus, ok := status.FromError(actualError)
+			assert.True(t, ok, "Expected a gRPC status error")
+			assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), test.fileName)
+		})
+	}
+}
+
 func TestStoreFile_CommunicationError_MetadataRequest_RetryIsRequested(t *testing.T) {
 	communicationError := errors.New("ups..someting went wrong")
 	mockStream := fixture.CreateStoreFileStream(t)
