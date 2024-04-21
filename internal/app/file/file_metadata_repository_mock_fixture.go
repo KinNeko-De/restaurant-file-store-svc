@@ -17,12 +17,19 @@ func (mockFileMetadataRepository *MockFileMetadataRepository) setupStoreFileMeta
 		Times(1)
 }
 
-func (mockFileMetadataRepository *MockFileMetadataRepository) setupStoreRevisionMetadata(t *testing.T, fileid uuid.UUID, storedRevision **Revision) {
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupStoreRevisionMetadata(t *testing.T, fileid uuid.UUID) func() Revision {
 	t.Helper()
+	var storedRevisionMetadata Revision
 	mockFileMetadataRepository.EXPECT().StoreRevision(mock.Anything, fileid, mock.IsType(Revision{})).
-		Run(func(ctx context.Context, existingFileId uuid.UUID, revision Revision) { *storedRevision = &revision }).
+		Run(func(ctx context.Context, existingFileId uuid.UUID, revision Revision) {
+			storedRevisionMetadata = revision
+		}).
 		Return(nil).
 		Times(1)
+
+	return func() Revision {
+		return storedRevisionMetadata
+	}
 }
 
 func (mockFileMetadataRepository *MockFileMetadataRepository) setupFileMetadataRepositoryMockStoreFileMetadataReturnsError(t *testing.T, err error) *MockFileMetadataRepository {
