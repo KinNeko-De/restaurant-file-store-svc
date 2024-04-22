@@ -3,7 +3,6 @@ package file
 import (
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -60,12 +59,12 @@ func newFileMetadata(fileId uuid.UUID, initialRevision Revision) FileMetadata {
 	}
 }
 
-func newRevision(revisionId uuid.UUID, fileName string, fileSize uint64, sniff []byte) Revision {
+func newRevision(revisionId uuid.UUID, extension string, fileSize uint64, sniff []byte) Revision {
 	createdAt := time.Now().UTC()
 
 	return Revision{
 		Id:        revisionId,
-		Extension: filepath.Ext(fileName),
+		Extension: extension,
 		MediaType: http.DetectContentType(sniff),
 		Size:      fileSize,
 		CreatedAt: createdAt,

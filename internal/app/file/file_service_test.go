@@ -3,10 +3,8 @@
 package file
 
 import (
-	context "context"
 	"errors"
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
@@ -14,11 +12,9 @@ import (
 	"github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
-	v1 "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	fixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/file"
 	ioFixture "github.com/kinneko-de/restaurant-file-store-svc/test/testing/io"
 	"github.com/stretchr/testify/assert"
-	mock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -26,32 +22,35 @@ import (
 
 func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
 	sentFile := fixture.TextFile()
+	chunks := [][]byte{sentFile}
 	sentFileName := "test.txt"
 	expectedSize := uint64(4)
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedFileExtension := ".txt"
-
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	var actualResponse *apiRestaurantFile.StoreFileResponse
-	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
-	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+	mockStream := fixture.CreateStoreFileStream(t)
+	mockStream.SetupSuccessfulSend(t, sentFileName, chunks)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	recordStoredFileMetadata := mockFileMetadataRepository.setupStoreFileMetadata(t)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
 
 	assert.Nil(t, actualError)
-	assert.NotEqual(t, uuid.Nil, generatedFileId)
-	assert.Equal(t, uuid.Version(0x4), generatedFileId.Version())
-	assert.Equal(t, uuid.RFC4122, generatedFileId.Variant())
-	assert.NotEqual(t, uuid.Nil, generatedRevisionId)
-	assert.Equal(t, uuid.Version(0x4), generatedRevisionId.Version())
-	assert.Equal(t, uuid.RFC4122, generatedRevisionId.Variant())
+	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
 
+	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
+	assert.Equal(t, uuid.Version(0x4), actualStoredFileId.Version())
+	assert.Equal(t, uuid.RFC4122, actualStoredFileId.Variant())
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
+	assert.Equal(t, uuid.Version(0x4), actualStoredRevisionId.Version())
+	assert.Equal(t, uuid.RFC4122, actualStoredRevisionId.Variant())
+
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
@@ -62,6 +61,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
 	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
 
+	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata)
 	assert.NotNil(t, storedFileMetadata.Id)
 	assert.NotNil(t, storedFileMetadata.Revisions)
@@ -72,39 +72,44 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	assert.Equal(t, expectedFileExtension, storedFileMetadata.Revisions[0].Extension)
 	assert.NotNil(t, storedFileMetadata.Revisions[0].CreatedAt)
 
-	assert.Equal(t, generatedFileId.String(), actualResponse.StoredFile.Id.Value)
-	assert.Equal(t, generatedRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
+	assert.Equal(t, actualStoredFileId.String(), actualResponse.StoredFile.Id.Value)
+	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
 }
 
 func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
 	existingFileId := uuid.New()
-
 	sentFile := fixture.TextFile()
+	chunks := [][]byte{sentFile}
 	sentFileName := "test.txt"
 	expectedSize := uint64(4)
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedFileExtension := ".txt"
-
-	var generatedRevisionId *uuid.UUID
-	var storedRevision *Revision
-	var actualResponse *apiRestaurantFile.StoreFileResponse
-	mockStream := fixture.CreateValidStoreRevisionStream(t, existingFileId, sentFileName, [][]byte{sentFile})
-	fixture.SetupAndRecordSuccessfulStoreRevisionResponse(t, mockStream, &actualResponse)
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock2(t, existingFileId, &storedRevision)
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.SetupSuccessfulSend(t, existingFileId, sentFileName, chunks)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	recordStoredRevision := mockFileMetadataRepository.setupStoreRevisionMetadata(t, existingFileId)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.Nil(t, actualError)
-	assert.NotEqual(t, uuid.Nil, generatedRevisionId)
-	assert.Equal(t, uuid.Version(0x4), generatedRevisionId.Version())
-	assert.Equal(t, uuid.RFC4122, generatedRevisionId.Variant())
+	actualStoredRevisionId := recordStoredRevisionId()
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
+	assert.Equal(t, uuid.Version(0x4), actualStoredRevisionId.Version())
+	assert.Equal(t, uuid.RFC4122, actualStoredRevisionId.Variant())
+
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
+	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotNil(t, actualResponse.StoredFileMetadata)
 	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
@@ -112,79 +117,90 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffByt
 	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
 	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
 
-	assert.NotNil(t, storedRevision)
-	assert.NotNil(t, storedRevision.Id)
-	assert.Equal(t, expectedSize, storedRevision.Size)
-	assert.Equal(t, expectedMediaType, storedRevision.MediaType)
-	assert.Equal(t, expectedFileExtension, storedRevision.Extension)
-	assert.NotNil(t, storedRevision.CreatedAt)
-
-	assert.Equal(t, generatedRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
+	actualStoredRevision := recordStoredRevision()
+	assert.NotNil(t, actualStoredRevision)
+	assert.NotNil(t, actualStoredRevision.Id)
+	assert.Equal(t, expectedSize, actualStoredRevision.Size)
+	assert.Equal(t, expectedMediaType, actualStoredRevision.MediaType)
+	assert.Equal(t, expectedFileExtension, actualStoredRevision.Extension)
+	assert.NotNil(t, actualStoredRevision.CreatedAt)
 }
 
 func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *testing.T) {
 	sentFile := fixture.PdfFile()[0:512]
+	chunks := [][]byte{sentFile}
 	sentFileName := "test.pdf"
 	expectedSize := uint64(512)
 	expectedMediaType := "application/pdf"
-
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	var actualResponse *apiRestaurantFile.StoreFileResponse
-	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
-	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+	mockStream := fixture.CreateStoreFileStream(t)
+	mockStream.SetupSuccessfulSend(t, sentFileName, chunks)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	recordStoredFileMetadata := mockFileMetadataRepository.setupStoreFileMetadata(t)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
 
 	assert.Nil(t, actualError)
 
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFileMetadata)
 	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
 	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
 
+	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata)
 	assert.Len(t, storedFileMetadata.Revisions, 1)
 	assert.NotNil(t, storedFileMetadata.Revisions[0].Id)
 	assert.Equal(t, expectedSize, storedFileMetadata.Revisions[0].Size)
 	assert.Equal(t, expectedMediaType, storedFileMetadata.Revisions[0].MediaType)
+
+	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
+	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 }
 
 func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *testing.T) {
 	existingFileId := uuid.New()
-
 	sentFile := fixture.PdfFile()[0:512]
+	chunks := [][]byte{sentFile}
 	sentFileName := "test.pdf"
 	expectedSize := uint64(512)
 	expectedMediaType := "application/pdf"
-
-	var generatedRevisionId *uuid.UUID
-	var storedRevision *Revision
-	var actualResponse *apiRestaurantFile.StoreFileResponse
-	mockStream := fixture.CreateValidStoreRevisionStream(t, existingFileId, sentFileName, [][]byte{sentFile})
-	fixture.SetupAndRecordSuccessfulStoreRevisionResponse(t, mockStream, &actualResponse)
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock2(t, existingFileId, &storedRevision)
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.SetupSuccessfulSend(t, existingFileId, sentFileName, chunks)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	recordStoredRevision := mockFileMetadataRepository.setupStoreRevisionMetadata(t, existingFileId)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.Nil(t, actualError)
 
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFileMetadata)
 	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
 	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
 
-	assert.NotNil(t, storedRevision.Id)
-	assert.Equal(t, expectedSize, storedRevision.Size)
-	assert.Equal(t, expectedMediaType, storedRevision.MediaType)
+	actualStoredRevision := recordStoredRevision()
+	assert.NotNil(t, actualStoredRevision.Id)
+	assert.Equal(t, expectedSize, actualStoredRevision.Size)
+	assert.Equal(t, expectedMediaType, actualStoredRevision.MediaType)
+
+	actualStoredRevisionId := recordStoredRevisionId()
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
+	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
 }
 
 func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
@@ -194,21 +210,22 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	expectedSize := uint64(51124)
 	expectedMediaType := "application/pdf"
 	expectedFileExtension := ".pdf"
-
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	var actualResponse *apiRestaurantFile.StoreFileResponse
-	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, chunks)
-	fixture.SetupAndRecordSuccessfulStoreFileResponse(t, mockStream, &actualResponse)
-	fileWriter := ioFixture.CreateWriterCloser(t, chunks)
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+	mockStream := fixture.CreateStoreFileStream(t)
+	mockStream.SetupSuccessfulSend(t, sentFileName, chunks)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	recordStoredFileMetadata := mockFileMetadataRepository.setupStoreFileMetadata(t)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
+
 	assert.Nil(t, actualError)
 
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
@@ -219,6 +236,7 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
 	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
 
+	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata)
 	assert.NotNil(t, storedFileMetadata.Id)
 	assert.NotNil(t, storedFileMetadata.Revisions)
@@ -228,31 +246,36 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	assert.Equal(t, expectedMediaType, storedFileMetadata.Revisions[0].MediaType)
 	assert.Equal(t, expectedFileExtension, storedFileMetadata.Revisions[0].Extension)
 	assert.NotNil(t, storedFileMetadata.Revisions[0].CreatedAt)
+
+	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
+	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 }
 
 func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
 	existingFileId := uuid.New()
-
 	sentFile := fixture.PdfFile()
 	chunks := fixture.SplitIntoChunks(sentFile, 256)
 	sentFileName := "test.pdf"
 	expectedSize := uint64(51124)
 	expectedMediaType := "application/pdf"
 	expectedFileExtension := ".pdf"
-
-	var generatedRevisionId *uuid.UUID
-	var storedRevision *Revision
-	var actualResponse *apiRestaurantFile.StoreFileResponse
-	mockStream := fixture.CreateValidStoreRevisionStream(t, existingFileId, sentFileName, chunks)
-	fixture.SetupAndRecordSuccessfulStoreRevisionResponse(t, mockStream, &actualResponse)
-	fileWriter := ioFixture.CreateWriterCloser(t, chunks)
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock2(t, existingFileId, &storedRevision)
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.SetupSuccessfulSend(t, existingFileId, sentFileName, chunks)
+	recordActualResponse := mockStream.SetupSendAndClose(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	recordStoreRevision := mockFileMetadataRepository.setupStoreRevisionMetadata(t, existingFileId)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreRevision(mockStream)
+
 	assert.Nil(t, actualError)
 
+	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
@@ -263,119 +286,159 @@ func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512Sn
 	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
 	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
 
-	assert.NotNil(t, storedRevision.Id)
-	assert.Equal(t, expectedSize, storedRevision.Size)
-	assert.Equal(t, expectedMediaType, storedRevision.MediaType)
-	assert.Equal(t, expectedFileExtension, storedRevision.Extension)
-	assert.NotNil(t, storedRevision.CreatedAt)
+	actualStoredRevision := recordStoreRevision()
+	assert.NotNil(t, actualStoredRevision.Id)
+	assert.Equal(t, expectedSize, actualStoredRevision.Size)
+	assert.Equal(t, expectedMediaType, actualStoredRevision.MediaType)
+	assert.Equal(t, expectedFileExtension, actualStoredRevision.Extension)
+	assert.NotNil(t, actualStoredRevision.CreatedAt)
+
+	actualStoredRevisionId := recordStoredRevisionId()
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
+	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
+}
+
+func TestStoreFile_FileNameIsInvalid_FileIsRejected(t *testing.T) {
+	tests := []struct {
+		name     string
+		fileName string
+	}{
+		{"Empty", ""},
+		{"NoFileExtension", "ineedanextension"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mockStream := fixture.CreateStoreFileStream(t)
+			mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, test.fileName))
+
+			sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
+			actualError := sut.StoreFile(mockStream)
+
+			assert.NotNil(t, actualError)
+			actualStatus, ok := status.FromError(actualError)
+			assert.True(t, ok, "Expected a gRPC status error")
+			assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), test.fileName)
+		})
+	}
+}
+
+func TestStoreRevision_FileNameIsInvalid_FileIsRejected(t *testing.T) {
+	tests := []struct {
+		name     string
+		fileName string
+	}{
+		{"Empty", ""},
+		{"NoFileExtension", "ineedanextension"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			existingFileId := uuid.New()
+			mockStream := fixture.CreateStoreRevisionStream(t)
+			mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, test.fileName))
+
+			sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
+			actualError := sut.StoreRevision(mockStream)
+
+			assert.NotNil(t, actualError)
+			actualStatus, ok := status.FromError(actualError)
+			assert.True(t, ok, "Expected a gRPC status error")
+			assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), test.fileName)
+		})
+	}
 }
 
 func TestStoreFile_CommunicationError_MetadataRequest_RetryIsRequested(t *testing.T) {
+	communicationError := errors.New("ups..someting went wrong")
 	mockStream := fixture.CreateStoreFileStream(t)
-	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+	mockStream.SetupSendError(t, communicationError)
 
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
 	actualError := sut.StoreFile(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
-	assert.Nil(t, storedFileMetadata)
 }
 
 func TestStoreRevision_CommunicationError_MetadataRequest_RetryIsRequested(t *testing.T) {
-	existingFileId := uuid.New()
-
+	communicationError := errors.New("ups..someting went wrong")
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
+	mockStream.SetupSendError(t, communicationError)
 
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
-
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
-	assert.Nil(t, storedFileMetadata)
 }
 
 func TestStoreFile_CommunicationError_ChunckRequest_RetryIsRequested(t *testing.T) {
+	communicationError := errors.New("ups..someting went wrong")
 	mockStream := fixture.CreateStoreFileStream(t)
-	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataStoreFileRequest(t, "test.txt"), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, "test.txt"))
+	mockStream.SetupSendError(t, communicationError)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, ioFixture.NewMockWriteCloser(t))
 
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreFile(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
-	assert.Nil(t, storedFileMetadata)
+	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
+	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 }
 
 func TestStoreRevision_CommunicationError_ChunckRequest_RetryIsRequested(t *testing.T) {
+	communicationError := errors.New("ups..someting went wrong")
 	existingFileId := uuid.New()
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt"), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(nil, errors.New("ups..someting went wrong")).Times(1)
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, "test.txt"))
+	mockStream.SetupSendError(t, communicationError)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, ioFixture.NewMockWriteCloser(t))
 
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
-	assert.Nil(t, storedFileMetadata)
+
+	actualStoredRevisionId := recordStoredRevisionId()
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 }
 
 func TestStoreFile_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T) {
 	file := fixture.TextFile()
-
+	chunks := [][]byte{file}
+	closeError := errors.New("ups..someting went wrong")
 	mockStream := fixture.CreateStoreFileStream(t)
-	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataStoreFileRequest(t, "test.txt"), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(fixture.CreateChunkStoreFileRequest(t, file), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
-	mockStream.EXPECT().SendAndClose(mock.Anything).Return(errors.New("ups..someting went wrong")).Times(1)
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{file})
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, "test.txt"))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	mockStream.SetupSendAndCloseError(t, closeError)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	recordStoredFileMetadata := mockFileMetadataRepository.setupStoreFileMetadata(t)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
@@ -383,28 +446,32 @@ func TestStoreFile_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
 	assert.Contains(t, actualStatus.Message(), "response")
+	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata) // TODO: Decide how to clean up this, maybe add metrics to track this; maybe add a small saga?
+	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
+	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 }
 
 func TestStoreRevision_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T) {
+	communicationError := errors.New("ups..someting went wrong")
 	file := fixture.TextFile()
+	chunks := [][]byte{file}
 	existingFileId := uuid.New()
-
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.EXPECT().Recv().Return(fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt"), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(fixture.CreateChunkStoreRevisionRequest(t, file), nil).Times(1)
-	mockStream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
-	mockStream.EXPECT().SendAndClose(mock.Anything).Return(errors.New("ups..someting went wrong")).Times(1)
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{file})
-
-	var generatedRevisionId *uuid.UUID
-	var storedRevision *Revision
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock2(t, existingFileId, &storedRevision)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, "test.txt"))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	mockStream.SetupSendAndCloseError(t, communicationError)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	recordStoredRevision := mockFileMetadataRepository.setupStoreRevisionMetadata(t, existingFileId)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreRevision(mockStream)
@@ -416,267 +483,243 @@ func TestStoreRevision_CommunicationError_SendAndClose_RetryIsRequested(t *testi
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
 	assert.Contains(t, actualStatus.Message(), "response")
-	assert.NotNil(t, storedRevision) // TODO: Decide how to clean up this, maybe add metrics to track this; maybe add a small saga? and should the user retry this? the revision is already stored
+	assert.NotNil(t, recordStoredRevision()) // TODO: Decide how to clean up this, maybe add metrics to track this; maybe add a small saga? and should the user retry this? the revision is already stored
+
+	actualStoredRevisionId := recordStoredRevisionId()
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 }
 
 func TestStoreFile_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testing.T) {
+	chunks := [][]byte{fixture.TextFile()}
 	mockStream := fixture.CreateStoreFileStream(t)
-	firstRequest := fixture.CreateChunkStoreFileRequest(t, fixture.TextFile())
-	mockStream.EXPECT().Recv().Return(firstRequest, nil).Times(1)
+	mockStream.SetupSendFile(t, chunks)
 
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
-
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
 	actualError := sut.StoreFile(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
-	assert.Nil(t, storedFileMetadata)
 }
 
 func TestStoreRevision_InvalidRequest_MetadataIsMissing_FileIsRejected(t *testing.T) {
-	existingFileId := uuid.New()
+	chunks := [][]byte{fixture.TextFile()}
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	firstRequest := fixture.CreateChunkStoreRevisionRequest(t, fixture.TextFile())
-	mockStream.EXPECT().Recv().Return(firstRequest, nil).Times(1)
+	mockStream.SetupSendFile(t, chunks)
 
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
-
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
-	assert.Nil(t, storedFileMetadata)
 }
 
 func TestStoreFile_InvalidRequest_MetadataIsSentTwice_FileIsRejected(t *testing.T) {
 	mockStream := fixture.CreateStoreFileStream(t)
-	firstRequest := fixture.CreateMetadataStoreFileRequest(t, "test.txt")
-	mockStream.EXPECT().Recv().Return(firstRequest, nil).Times(1)
-	secondRequest := fixture.CreateMetadataStoreFileRequest(t, "test2.txt")
-	mockStream.EXPECT().Recv().Return(secondRequest, nil).Times(1)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, "test.txt"))
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, "test2.txt"))
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredFileId := mockFileRepository.setupCreateFileNewFile(t, ioFixture.NewMockWriteCloser(t))
 
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
-
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreFile(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
-	assert.Nil(t, storedFileMetadata)
+	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
+	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 }
 
 func TestStoreRevision_InvalidRequest_MetadataIsSentTwice_FileIsRejected(t *testing.T) {
 	existingFileId := uuid.New()
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	firstRequest := fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test.txt")
-	mockStream.EXPECT().Recv().Return(firstRequest, nil).Times(1)
-	secondRequest := fixture.CreateMetadataStoreRevisionRequest(t, existingFileId, "test2.txt")
-	mockStream.EXPECT().Recv().Return(secondRequest, nil).Times(1)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, "test.txt"))
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, "test2.txt"))
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, ioFixture.NewMockWriteCloser(t))
 
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{})
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
-
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
-	assert.Nil(t, storedFileMetadata)
+	assert.NotEqual(t, uuid.Nil, recordStoredRevisionId())
 }
 
 func TestStoreFile_FileCreatingError_RetryRequested(t *testing.T) {
 	err := errors.New("Error creating file")
 	sentFileName := "test.txt"
+	chunks := [][]byte{}
+	mockStream := fixture.CreateStoreFileStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	mockFileRepository.setupCreateFileError(t, err)
 
-	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidStoreFileStreamThatAbortsOnFileWrite(t, sentFileName, [][]byte{})
-
-	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New())).Return(nil, err).Times(1)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
-
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreFile(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "create")
-	assert.Nil(t, storedFileMetadata)
 }
 
 func TestStoreRevision_FileCreatingError_RetryRequested(t *testing.T) {
 	err := errors.New("Error creating file")
 	sentFileName := "test.txt"
-
 	existingFileId := uuid.New()
-	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidStoreRevisionStreamThatAbortsOnFileWrite(t, existingFileId, sentFileName, [][]byte{})
+	chunks := [][]byte{}
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	mockFileRepository.setupCreateFileError(t, err)
 
-	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, existingFileId, mock.IsType(uuid.New())).Return(nil, err).Times(1)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
-
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "create")
-	assert.Nil(t, storedFileMetadata)
 }
 
 func TestStoreFile_FileWritingError_RetryRequested(t *testing.T) {
 	err := errors.New("Error writing file")
 	sentFile := fixture.TextFile()
 	sentFileName := "test.txt"
+	chunks := [][]byte{sentFile}
+	writtenChunks := [][]byte{}
+	mockStream := fixture.CreateStoreFileStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupWrite(t, writtenChunks)
+	fileWriter.SetupWriteError(t, err)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredIds := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
 
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidStoreFileStreamThatAbortsOnFileWrite(t, sentFileName, [][]byte{sentFile})
-	fileWriter := ioFixture.CreateWriterCloserRanIntoWriteError(t, [][]byte{}, err)
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
-
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreFile(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "write")
-	assert.Nil(t, storedFileMetadata)
+	actualStoredFileId, actualStoredRevisionId := recordStoredIds()
+	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 }
 
 func TestStoreRevision_FileWritingError_RetryRequested(t *testing.T) {
 	err := errors.New("Error writing file")
-	sentFile := fixture.TextFile()
 	sentFileName := "test.txt"
-
+	sentFile := fixture.TextFile()
 	existingFileId := uuid.New()
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidStoreRevisionStreamThatAbortsOnFileWrite(t, existingFileId, sentFileName, [][]byte{sentFile})
-	fileWriter := ioFixture.CreateWriterCloserRanIntoWriteError(t, [][]byte{}, err)
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+	chunks := [][]byte{sentFile}
+	writtenChunks := [][]byte{}
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupWrite(t, writtenChunks)
+	fileWriter.SetupWriteError(t, err)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
 
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "write")
-	assert.Nil(t, storedFileMetadata)
+	assert.NotEqual(t, uuid.Nil, recordStoredRevisionId())
 }
 
 func TestStoreFile_FileClosingError_RetryRequested(t *testing.T) {
 	err := errors.New("Error closing file")
-	sentFile := fixture.TextFile()
 	sentFileName := "test.txt"
+	sentFile := fixture.TextFile()
+	chunks := [][]byte{sentFile}
+	mockStream := fixture.CreateStoreFileStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupWrite(t, chunks)
+	fileWriter.SetupCloseError(t, err)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredIds := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
 
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidStoreFileStreamThatAbortsOnFileClose(t, sentFileName, [][]byte{sentFile})
-	fileWriter := ioFixture.CreateWriterCloserRanIntoCloseError(t, [][]byte{sentFile}, err)
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
-
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreFile(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "close")
-	assert.Nil(t, storedFileMetadata)
+	actualStoredFileId, actualStoredRevisionId := recordStoredIds()
+	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 }
 
 func TestStoreRevision_FileClosingError_RetryRequested(t *testing.T) {
 	err := errors.New("Error closing file")
 	sentFile := fixture.TextFile()
+	chunks := [][]byte{sentFile}
 	sentFileName := "test.txt"
-
 	existingFileId := uuid.New()
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidStoreRevisionStreamThatAbortsOnFileClose(t, existingFileId, sentFileName, [][]byte{sentFile})
-	fileWriter := ioFixture.CreateWriterCloserRanIntoCloseError(t, [][]byte{sentFile}, err)
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFileId, &generatedRevisionId)
-	mockFileMetadataRepository := createFileMetadataRepositoryMock(t, &storedFileMetadata)
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupWrite(t, chunks)
+	fileWriter.SetupCloseError(t, err)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoreRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
 
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, mockFileRepository, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
-
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "close")
-	assert.Nil(t, storedFileMetadata)
+	assert.NotEqual(t, uuid.Nil, recordStoreRevisionId())
 }
 
 func TestStoreFile_StoreFileMetadataThrowsError_RetryRequested(t *testing.T) {
 	err := errors.New("Error contains possible sensitive information")
 	sentFile := fixture.TextFile()
 	sentFileName := "test.txt"
-
-	var generatedFileId *uuid.UUID
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidStoreFileStream(t, sentFileName, [][]byte{sentFile})
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
-	mockFileRepository := createFileRepositoryMock(t, fileWriter, &generatedFileId, &generatedRevisionId)
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	setupFileMetadataRepositoryMockStoreFileMetadataReturnsError(t, mockFileMetadataRepository, err)
+	chunks := [][]byte{sentFile}
+	mockStream := fixture.CreateStoreFileStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreFileRequestFromFileName(t, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredIds := mockFileRepository.setupCreateFileNewFile(t, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFileMetadataRepositoryMockStoreFileMetadataReturnsError(t, err)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreFile(mockStream)
@@ -687,23 +730,27 @@ func TestStoreFile_StoreFileMetadataThrowsError_RetryRequested(t *testing.T) {
 	assert.True(t, ok, "Expected a gRPC status error")
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
-	assert.Nil(t, storedFileMetadata)
+	actualStoredFileId, actualStoredRevisionId := recordStoredIds()
+	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
+	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
 }
 
 func TestStoreRevision_FileIdNotFound(t *testing.T) {
 	err := errors.New("file id not matching")
+	existingFileId := uuid.New()
 	sentFile := fixture.TextFile()
+	chunks := [][]byte{sentFile}
 	sentFileName := "test.txt"
-
-	existingFile := uuid.New()
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidStoreRevisionStream(t, existingFile, sentFileName, [][]byte{sentFile})
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFile, &generatedRevisionId)
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	setupFileMetadataRepositoryMockStoreRevisionReturnsError(t, mockFileMetadataRepository, existingFile, err)
-	mockFileMetadataRepository.EXPECT().NoMatchError().Return(err).Times(1)
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFileMetadataRepositoryMockStoreRevisionReturnsError(t, existingFileId, err, err)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreRevision(mockStream)
@@ -713,22 +760,19 @@ func TestStoreRevision_FileIdNotFound(t *testing.T) {
 	actualStatus, ok := status.FromError(actualError)
 	assert.True(t, ok, "Expected a gRPC status error")
 	assert.Equal(t, codes.NotFound, actualStatus.Code())
-	assert.Contains(t, actualStatus.Message(), existingFile.String())
-	assert.Nil(t, storedFileMetadata)
+	assert.Contains(t, actualStatus.Message(), existingFileId.String())
+	assert.NotEqual(t, uuid.Nil, recordStoredRevisionId())
 }
 
 func TestStoreRevision_FileIdIsNil(t *testing.T) {
-	request := &v1.StoreRevisionRequest{
-		Part: &v1.StoreRevisionRequest_StoreRevision{
-			StoreRevision: &v1.StoreRevision{
-				FileId: nil,
-			},
-		},
+	storeRevision := &apiRestaurantFile.StoreRevision{
+		FileId: nil,
 	}
+	request := fixture.CreateMetadataStoreRevisionRequest(t, storeRevision)
 	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.EXPECT().Recv().Return(request, nil).Times(1)
+	mockStream.SetupSendMetadata(t, request)
 
-	sut := createSut(t, nil, nil)
+	sut := createSut(t, nil, NewMockFileMetadataRepository(t))
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.NotNil(t, actualError)
@@ -739,44 +783,55 @@ func TestStoreRevision_FileIdIsNil(t *testing.T) {
 }
 
 func TestStoreRevision_FileIdIsInvalid(t *testing.T) {
-	invalidUuid := "433b4b7c-4b1e-4b1e4b1e4b1e"
-
-	request := &v1.StoreRevisionRequest{
-		Part: &v1.StoreRevisionRequest_StoreRevision{
-			StoreRevision: &v1.StoreRevision{
-				FileId: &protobuf.Uuid{
-					Value: invalidUuid,
-				},
-			},
-		},
+	tests := []struct {
+		name string
+		uuid string
+	}{
+		{"Empty", ""},
+		{"InvalidFormat", "433b4b7c-4b1e-4b1e4b1e4b1e"},
 	}
-	mockStream := fixture.CreateStoreRevisionStream(t)
-	mockStream.EXPECT().Recv().Return(request, nil).Times(1)
 
-	sut := createSut(t, nil, nil)
-	actualError := sut.StoreRevision(mockStream)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			storeRevision := &apiRestaurantFile.StoreRevision{
+				FileId: &protobuf.Uuid{
+					Value: test.uuid,
+				},
+			}
 
-	assert.NotNil(t, actualError)
-	actualStatus, ok := status.FromError(actualError)
-	assert.True(t, ok, "Expected a gRPC status error")
-	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
-	assert.Contains(t, actualStatus.Message(), invalidUuid)
+			request := fixture.CreateMetadataStoreRevisionRequest(t, storeRevision)
+			mockStream := fixture.CreateStoreRevisionStream(t)
+			mockStream.SetupSendMetadata(t, request)
+
+			sut := createSut(t, nil, NewMockFileMetadataRepository(t))
+			actualError := sut.StoreRevision(mockStream)
+
+			assert.NotNil(t, actualError)
+			actualStatus, ok := status.FromError(actualError)
+			assert.True(t, ok, "Expected a gRPC status error")
+			assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), test.uuid)
+		})
+	}
 }
 
 func TestStoreRevision_StoreFileMetadataThrowsError_RetryRequested(t *testing.T) {
 	err := errors.New("Error contains possible sensitive information")
+	noMatchErr := errors.New("not expected error")
+	existingFileId := uuid.New()
 	sentFile := fixture.TextFile()
 	sentFileName := "test.txt"
-
-	existingFile := uuid.New()
-	var generatedRevisionId *uuid.UUID
-	var storedFileMetadata *FileMetadata
-	mockStream := fixture.CreateValidStoreRevisionStream(t, existingFile, sentFileName, [][]byte{sentFile})
-	fileWriter := ioFixture.CreateWriterCloser(t, [][]byte{sentFile})
-	mockFileRepository := createFileRepositoryMock2(t, fileWriter, existingFile, &generatedRevisionId)
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	setupFileMetadataRepositoryMockStoreRevisionReturnsError(t, mockFileMetadataRepository, existingFile, err)
-	mockFileMetadataRepository.EXPECT().NoMatchError().Return(errors.New("not expected error")).Times(1)
+	chunks := [][]byte{sentFile}
+	mockStream := fixture.CreateStoreRevisionStream(t)
+	mockStream.SetupSendMetadata(t, fixture.CreateMetadataStoreRevisionRequestFromFileName(t, existingFileId, sentFileName))
+	mockStream.SetupSendFile(t, chunks)
+	mockStream.SetupSendEndOfFile(t)
+	fileWriter := ioFixture.NewMockWriteCloser(t)
+	fileWriter.SetupSuccessfulWrite(t, chunks)
+	mockFileRepository := NewMockFileRepository(t)
+	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFileMetadataRepositoryMockStoreRevisionReturnsError(t, existingFileId, err, noMatchErr)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreRevision(mockStream)
@@ -787,16 +842,14 @@ func TestStoreRevision_StoreFileMetadataThrowsError_RetryRequested(t *testing.T)
 	assert.True(t, ok, "Expected a gRPC status error")
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "retry")
-	assert.Nil(t, storedFileMetadata)
+	assert.NotEqual(t, uuid.Nil, recordStoredRevisionId())
 }
 
 func TestDownloadFile_FileIdIsNil(t *testing.T) {
-	request := &v1.DownloadFileRequest{
-		FileId: nil,
-	}
+	request := fixture.CreateDownloadFileRequest(t, nil)
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	sut := createSut(t, nil, nil)
+	sut := createSut(t, nil, NewMockFileMetadataRepository(t))
 	err := sut.DownloadFile(request, mockStream)
 
 	assert.NotNil(t, err)
@@ -819,14 +872,13 @@ func TestDownloadFile_FileIdIsInvalid(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := &apiRestaurantFile.DownloadFileRequest{
-				FileId: &protobuf.Uuid{
-					Value: test.uuid,
-				},
+			fileId := &protobuf.Uuid{
+				Value: test.uuid,
 			}
-
+			request := fixture.CreateDownloadFileRequest(t, fileId)
 			mockStream := fixture.CreateDownloadFileStream(t)
-			sut := createSut(t, nil, nil)
+
+			sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
 			err := sut.DownloadFile(request, mockStream)
 
 			assert.NotNil(t, err)
@@ -854,15 +906,12 @@ func TestDownloadFile_FileIdNotFound(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fileId := uuid.New()
-			requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-			request := fixture.CreateDownloadFileRequest(t, requestedFileId)
-
-			mockFileMetadataRepository := &MockFileMetadataRepository{}
-			mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(FileMetadata{}, test.notFoundError).Times(1)
-			mockFileMetadataRepository.EXPECT().NotFoundError().Return(test.notFoundError).Times(1)
-
-			sut := createSut(t, nil, mockFileMetadataRepository)
+			request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
+			mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+			mockFileMetadataRepository.setupFetchFileMetadataReturnsError(t, fileId, test.notFoundError, test.notFoundError)
 			mockStream := fixture.CreateDownloadFileStream(t)
+
+			sut := createSut(t, NewMockFileRepository(t), mockFileMetadataRepository)
 			actualError := sut.DownloadFile(request, mockStream)
 
 			assert.NotNil(t, actualError)
@@ -877,15 +926,14 @@ func TestDownloadFile_FileIdNotFound(t *testing.T) {
 
 func TestDownloadFile_ErrorFetchingMetadataThatIsNotSameAsNotFoundError(t *testing.T) {
 	fileId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
-
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(FileMetadata{}, errors.New("ups..someting went wrong")).Times(1)
-	mockFileMetadataRepository.EXPECT().NotFoundError().Return(errors.New("file not found")).Times(1)
-
-	sut := createSut(t, nil, mockFileMetadataRepository)
+	fetchErr := errors.New("ups..someting went wrong")
+	notFoundErr := errors.New("file not found")
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadataReturnsError(t, fileId, fetchErr, notFoundErr)
 	mockStream := fixture.CreateDownloadFileStream(t)
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
+
+	sut := createSut(t, NewMockFileRepository(t), mockFileMetadataRepository)
 	actualError := sut.DownloadFile(request, mockStream)
 
 	assert.NotNil(t, actualError)
@@ -898,8 +946,7 @@ func TestDownloadFile_ErrorFetchingMetadataThatIsNotSameAsNotFoundError(t *testi
 func TestDownloadFile_SendMetadataFails(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	sendErr := errors.New("send error due to network connection as example")
 
 	fileMetadata := FileMetadata{
@@ -914,14 +961,12 @@ func TestDownloadFile_SendMetadataFails(t *testing.T) {
 			},
 		},
 	}
-
 	mockStream := fixture.CreateDownloadFileStream(t)
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
-	mockStream.EXPECT().Send(mock.Anything).Return(sendErr).Times(1)
-	mockFileRepository := &MockFileRepository{}
+	mockStream.SetupSendError(t, sendErr)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
 
-	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	sut := createSut(t, NewMockFileRepository(t), mockFileMetadataRepository)
 	actualError := sut.DownloadFile(request, mockStream)
 
 	assert.NotNil(t, actualError)
@@ -934,29 +979,32 @@ func TestDownloadFile_SendMetadataFails(t *testing.T) {
 func TestDownloadFile_FindingTheFileBytesFails(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	openErr := errors.New("open error because file disapperred most likey due someone fuckeled around manually")
+	expectedExtension := ".txt"
+	expectedMediaType := "text/plain; charset=utf-8"
+	expectedSize := 1024
+	expectedCreatedAt := time.Now().UTC()
 
 	fileMetadata := FileMetadata{
 		Id: fileId,
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: ".txt",
-				MediaType: "text/plain; charset=utf-8",
-				Size:      1024,
-				CreatedAt: time.Now().UTC(),
+				Extension: expectedExtension,
+				MediaType: expectedMediaType,
+				Size:      uint64(expectedSize),
+				CreatedAt: expectedCreatedAt,
 			},
 		},
 	}
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
-	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1) // metadata are sent
-	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(nil, openErr).Times(1)
+	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
+	mockFileRepository := NewMockFileRepository(t)
+	mockFileRepository.setupOpenFileError(t, fileId, revisionId, openErr)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.DownloadFile(request, mockStream)
@@ -966,35 +1014,46 @@ func TestDownloadFile_FindingTheFileBytesFails(t *testing.T) {
 	require.True(t, ok, "Expected a gRPC status error")
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.Internal, actualStatus.Code())
+	actualStoredFileMetadata := recordActualStoredFileMetadata()
+	assert.NotNil(t, actualStoredFileMetadata)
+	// TODO Assert the metadata contains the right file id as soon as the api is updated
+	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
+	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
+	assert.Equal(t, expectedSize, int(actualStoredFileMetadata.Size))
+	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
 }
 
 func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	readErr := errors.New("read error due to network connection as example")
+	expectedExtension := ".txt"
+	expectedMediaType := "text/plain; charset=utf-8"
+	expectedSize := uint64(1024)
+	expectedCreatedAt := time.Now().UTC()
 
 	fileMetadata := FileMetadata{
 		Id: fileId,
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: ".txt",
-				MediaType: "text/plain; charset=utf-8",
-				Size:      1024,
-				CreatedAt: time.Now().UTC(),
+				Extension: expectedExtension,
+				MediaType: expectedMediaType,
+				Size:      expectedSize,
+				CreatedAt: expectedCreatedAt,
 			},
 		},
 	}
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
-	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1) // metadata are sent
-	mockFileRepository := &MockFileRepository{}
-	readCloser := ioFixture.CreateReadCloserRanIntoReadError(t, readErr)
-	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(readCloser, nil).Times(1)
+	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
+	mockReader := ioFixture.NewMockReadCloser(t)
+	mockReader.SetupReadError(t, readErr)
+	mockFileRepository := NewMockFileRepository(t)
+	mockFileRepository.setupOpenFileExistingFile(t, fileId, revisionId, mockReader)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.DownloadFile(request, mockStream)
@@ -1004,77 +1063,99 @@ func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 	require.True(t, ok, "Expected a gRPC status error")
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.Internal, actualStatus.Code())
+
+	actualStoredFileMetadata := recordActualStoredFileMetadata()
+	assert.NotNil(t, actualStoredFileMetadata)
+	// TODO Assert the metadata contains the right file id as soon as the api is updated
+	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
+	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
+	assert.Equal(t, int(expectedSize), int(actualStoredFileMetadata.Size))
+	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
 }
 
 func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	file := fixture.TextFile()
 	closeErr := errors.New("close error due to network connection as example")
+	expectedExtension := ".txt"
+	expectedMediaType := "text/plain; charset=utf-8"
+	expectedSize := uint64(1024)
+	expectedCreatedAt := time.Now().UTC()
 
 	fileMetadata := FileMetadata{
 		Id: fileId,
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: ".txt",
-				MediaType: "text/plain; charset=utf-8",
-				Size:      1024,
-				CreatedAt: time.Now().UTC(),
+				Extension: expectedExtension,
+				MediaType: expectedMediaType,
+				Size:      expectedSize,
+				CreatedAt: expectedCreatedAt,
 			},
 		},
 	}
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
-	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1) // metadata are sent
-	mockFileRepository := &MockFileRepository{}
-	readCloser := ioFixture.CreateReadCloserRanIntoCloseError(t, file, closeErr)
-	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(readCloser, nil).Times(1)
+	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordActualDownloadedFile := mockStream.SetupRecordDownloadedFile(t)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
+	mockReader := ioFixture.NewMockReadCloser(t)
+	mockReader.SetupRead(t, file)
+	mockReader.SetupCloseError(t, closeErr)
+	mockFileRepository := NewMockFileRepository(t)
+	mockFileRepository.setupOpenFileExistingFile(t, fileId, revisionId, mockReader)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
-	actualFile := make([]byte, 0)
-	mockStream.EXPECT().Send(mock.Anything).Run(func(response *v1.DownloadFileResponse) {
-		actualFile = append(actualFile, response.GetChunk()...)
-	}).Return(nil)
 	actualError := sut.DownloadFile(request, mockStream)
 
 	assert.Nil(t, actualError)
-	assert.Equal(t, file, actualFile)
+	actualStoredFileMetadata := recordActualStoredFileMetadata()
+	assert.NotNil(t, actualStoredFileMetadata)
+	// TODO Assert the metadata contains the right file id as soon as the api is updated
+	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
+	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
+	assert.Equal(t, expectedSize, actualStoredFileMetadata.Size)
+	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	assert.Equal(t, file, recordActualDownloadedFile())
+
 }
 
 func TestDownloadFile_SendFileBytesFails(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
-	requestedFileId, _ := apiProtobuf.ToProtobuf(fileId)
-	request := fixture.CreateDownloadFileRequest(t, requestedFileId)
-	file := fixture.TextFile()
 	sendErr := errors.New("read error due to network connection as example")
+	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
+	file := fixture.TextFile()
+	expectedExtension := ".txt"
+	expectedMediaType := "text/plain; charset=utf-8"
+	expectedSize := uint64(1024)
+	expectedCreatedAt := time.Now().UTC()
 
 	fileMetadata := FileMetadata{
 		Id: fileId,
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: ".txt",
-				MediaType: "text/plain; charset=utf-8",
-				Size:      1024,
-				CreatedAt: time.Now().UTC(),
+				Extension: expectedExtension,
+				MediaType: expectedMediaType,
+				Size:      expectedSize,
+				CreatedAt: expectedCreatedAt,
 			},
 		},
 	}
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
-	mockStream.EXPECT().Send(mock.Anything).Return(nil).Times(1)     // metadata are sent
-	mockStream.EXPECT().Send(mock.Anything).Return(sendErr).Times(1) // file bytes are sent
-	mockFileRepository := &MockFileRepository{}
-	mockReader := ioFixture.CreateReadCloser(t, file)
-	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, revisionId).Return(mockReader, nil).Times(1)
+	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	mockStream.SetupSendError(t, sendErr)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
+	mockReader := ioFixture.NewMockReadCloser(t)
+	mockReader.SetupRead(t, file)
+	mockFileRepository := NewMockFileRepository(t)
+	mockFileRepository.setupOpenFileExistingFile(t, fileId, revisionId, mockReader)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.DownloadFile(request, mockStream)
@@ -1084,6 +1165,14 @@ func TestDownloadFile_SendFileBytesFails(t *testing.T) {
 	require.True(t, ok, "Expected a gRPC status error")
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.Internal, actualStatus.Code())
+
+	actualStoredFileMetadata := recordActualStoredFileMetadata()
+	assert.NotNil(t, actualStoredFileMetadata)
+	// TODO Assert the metadata contains the right file id as soon as the api is updated
+	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
+	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
+	assert.Equal(t, expectedSize, actualStoredFileMetadata.Size)
+	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
 }
 
 func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *testing.T) {
@@ -1113,30 +1202,26 @@ func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *tes
 		Revisions: []Revision{firstRevision, latestedRevision},
 	}
 
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	setupFileMetadataRepositoryToFetchMetadata(t, mockFileMetadataRepository, fileId, fileMetadata)
-	mockFileRepository := &MockFileRepository{}
-	mockReader := ioFixture.CreateReadCloser(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc)
-	mockFileRepository.EXPECT().OpenFile(mock.Anything, fileId, latestedRevision.Id).Return(mockReader, nil).Times(1)
+	mockStream := fixture.CreateDownloadFileStream(t)
+	recordStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordDownloadedFile := mockStream.SetupRecordDownloadedFile(t)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
+	mockFileRepository := NewMockFileRepository(t)
+	mockReader := ioFixture.NewMockReadCloser(t)
+	mockReader.SetupSuccessfulRead(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc)
+	mockFileRepository.setupOpenFileExistingFile(t, fileId, latestedRevision.Id, mockReader)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
-	mockStream := fixture.CreateDownloadFileStream(t)
-	mockStream.EXPECT().Send(mock.MatchedBy(func(response *apiRestaurantFile.DownloadFileResponse) bool {
-		actualMetadata := response.GetMetadata()
-		return actualMetadata.Extension == latestedRevision.Extension &&
-			actualMetadata.MediaType == latestedRevision.MediaType &&
-			actualMetadata.Size == latestedRevision.Size &&
-			actualMetadata.CreatedAt.AsTime().Equal(latestedRevision.CreatedAt)
-	})).Return(nil).Times(1)
-
-	actualFile := make([]byte, 0)
-	mockStream.EXPECT().Send(mock.Anything).Run(func(response *v1.DownloadFileResponse) {
-		actualFile = append(actualFile, response.GetChunk()...)
-	}).Return(nil)
 	actualError := sut.DownloadFile(request, mockStream)
 
 	assert.Nil(t, actualError)
-	assert.Equal(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc, actualFile)
+	actualStoredFileMetadata := recordStoredFileMetadata()
+	assert.Equal(t, latestedRevision.Extension, actualStoredFileMetadata.Extension)
+	assert.Equal(t, latestedRevision.MediaType, actualStoredFileMetadata.MediaType)
+	assert.Equal(t, latestedRevision.Size, actualStoredFileMetadata.Size)
+	assert.Equal(t, latestedRevision.CreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	assert.Equal(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc, recordDownloadedFile())
 }
 
 func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMetadataRepository *MockFileMetadataRepository) FileServiceServer {
@@ -1145,76 +1230,4 @@ func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMet
 	FileRepositoryInstance = mockFileRepository
 	FileMetadataRepositoryInstance = mockFileMetadataRepository
 	return sut
-}
-
-func createFileRepositoryMock(t *testing.T, fileWriter *ioFixture.MockWriteCloser, generatedFileId **uuid.UUID, generatedRevisionId **uuid.UUID) *MockFileRepository {
-	t.Helper()
-	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, mock.IsType(uuid.New()), mock.IsType(uuid.New())).
-		Run(func(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) {
-			*generatedFileId = &fileId
-			*generatedRevisionId = &revisionId
-		}).
-		Return(fileWriter, nil).
-		Times(1)
-
-	return mockFileRepository
-}
-
-func createFileRepositoryMock2(t *testing.T, fileWriter *ioFixture.MockWriteCloser, expectedFileId uuid.UUID, generatedRevisionId **uuid.UUID) *MockFileRepository {
-	// TODO Name setupexpectedRevision
-	t.Helper()
-	mockFileRepository := &MockFileRepository{}
-	mockFileRepository.EXPECT().CreateFile(mock.Anything, expectedFileId, mock.IsType(uuid.New())).
-		Run(func(ctx context.Context, fileId uuid.UUID, revisionId uuid.UUID) {
-			*generatedRevisionId = &revisionId
-		}).
-		Return(fileWriter, nil).
-		Times(1)
-
-	return mockFileRepository
-}
-
-func createFileMetadataRepositoryMock(t *testing.T, storedFileMetadata **FileMetadata) *MockFileMetadataRepository {
-	t.Helper()
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(FileMetadata{})).
-		Run(func(ctx context.Context, fileMetadata FileMetadata) { *storedFileMetadata = &fileMetadata }).
-		Return(nil).
-		Times(1)
-
-	return mockFileMetadataRepository
-}
-
-func createFileMetadataRepositoryMock2(t *testing.T, fileid uuid.UUID, storedRevision **Revision) *MockFileMetadataRepository {
-	t.Helper()
-	mockFileMetadataRepository := &MockFileMetadataRepository{}
-	mockFileMetadataRepository.EXPECT().StoreRevision(mock.Anything, fileid, mock.IsType(Revision{})).
-		Run(func(ctx context.Context, existingFileId uuid.UUID, revision Revision) { *storedRevision = &revision }).
-		Return(nil).
-		Times(1)
-
-	return mockFileMetadataRepository
-}
-
-func setupFileMetadataRepositoryMockStoreFileMetadataReturnsError(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, err error) *MockFileMetadataRepository {
-	t.Helper()
-	mockFileMetadataRepository.EXPECT().StoreFileMetadata(mock.Anything, mock.IsType(FileMetadata{})).
-		Return(err).
-		Times(1)
-
-	return mockFileMetadataRepository
-}
-
-func setupFileMetadataRepositoryMockStoreRevisionReturnsError(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, fileId uuid.UUID, err error) {
-	t.Helper()
-	mockFileMetadataRepository.EXPECT().StoreRevision(mock.Anything, fileId, mock.IsType(Revision{})).
-		Return(err).
-		Times(1)
-}
-
-func setupFileMetadataRepositoryToFetchMetadata(t *testing.T, mockFileMetadataRepository *MockFileMetadataRepository, fileId uuid.UUID, fileMetadata FileMetadata) {
-	t.Helper()
-	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(fileMetadata, nil).Times(1)
-	mockFileMetadataRepository.EXPECT().NotFoundError().Return(errors.New("not expected error")).Times(1)
 }
