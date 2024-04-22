@@ -159,13 +159,13 @@ func TestNewFileMetadata(t *testing.T) {
 
 func TestNewRevision(t *testing.T) {
 	revisionId := uuid.New()
-	fileName := "test.txt"
+	extension := ".txt"
 	fileSize := uint64(4)
 	sniff := fixture.TextFile()
 	expectedExtension := ".txt"
 	exectedMediaType := "text/plain; charset=utf-8"
 
-	revision := newRevision(revisionId, fileName, fileSize, sniff)
+	revision := newRevision(revisionId, extension, fileSize, sniff)
 
 	assert.NotEqual(t, uuid.Nil, revision.Id)
 	assert.Equal(t, expectedExtension, revision.Extension)

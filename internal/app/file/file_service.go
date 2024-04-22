@@ -2,6 +2,7 @@ package file
 
 import (
 	"errors"
+	"path/filepath"
 
 	"github.com/google/uuid"
 	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
@@ -25,8 +26,12 @@ func (s *FileServiceServer) StoreFile(stream apiRestaurantFile.FileService_Store
 	if err != nil {
 		return err
 	}
+	extension := filepath.Ext(storeFile.Name)
+	if extension == "" {
+		return status.Error(codes.InvalidArgument, "fileName '"+storeFile.Name+"'is invalid. fileName must have a dot and an extension. e.g. 'example.txt', '.txt'")
+	}
 
-	createdFileMetadata, err := createFile(stream, storeFile.Name)
+	createdFileMetadata, err := createFile(stream, extension)
 	if err != nil {
 		return err
 	}
@@ -57,7 +62,13 @@ func (s *FileServiceServer) StoreRevision(stream apiRestaurantFile.FileService_S
 		return err
 	}
 
-	createdFileMetadata, err := createRevision(stream, fileId, storeRevision.StoreFile.Name)
+	extension := filepath.Ext(storeRevision.StoreFile.Name)
+	if extension == "" {
+		return status.Error(codes.InvalidArgument, "fileName '"+storeRevision.StoreFile.Name+"'is invalid. fileName must have a dot and an extension. e.g. 'example.txt', '.txt'")
+
+	}
+
+	createdFileMetadata, err := createRevision(stream, fileId, extension)
 	if err != nil {
 		return err
 	}
@@ -77,7 +88,7 @@ func (s *FileServiceServer) StoreRevision(stream apiRestaurantFile.FileService_S
 	return nil
 }
 
-func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName string) (*FileMetadata, error) {
+func createFile(stream apiRestaurantFile.FileService_StoreFileServer, extension string) (*FileMetadata, error) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
 
@@ -86,7 +97,7 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 		return nil, err
 	}
 
-	createdRevision := newRevision(revisionId, fileName, totalFileSize, sniff)
+	createdRevision := newRevision(revisionId, extension, totalFileSize, sniff)
 	createdFileMetadata := newFileMetadata(fileId, createdRevision)
 
 	err = FileMetadataRepositoryInstance.StoreFileMetadata(stream.Context(), createdFileMetadata)
@@ -98,7 +109,7 @@ func createFile(stream apiRestaurantFile.FileService_StoreFileServer, fileName s
 	return &createdFileMetadata, err
 }
 
-func createRevision(stream apiRestaurantFile.FileService_StoreRevisionServer, fileId uuid.UUID, fileName string) (*FileMetadata, error) {
+func createRevision(stream apiRestaurantFile.FileService_StoreRevisionServer, fileId uuid.UUID, extension string) (*FileMetadata, error) {
 	revisionId := uuid.New()
 
 	totalFileSize, sniff, err := writeFile(&StoreRevision{stream}, stream.Context(), fileId, revisionId)
@@ -106,7 +117,7 @@ func createRevision(stream apiRestaurantFile.FileService_StoreRevisionServer, fi
 		return nil, err
 	}
 
-	createdRevision := newRevision(revisionId, fileName, totalFileSize, sniff)
+	createdRevision := newRevision(revisionId, extension, totalFileSize, sniff)
 	err = FileMetadataRepositoryInstance.StoreRevision(stream.Context(), fileId, createdRevision)
 	if err != nil {
 		if errors.Is(err, FileMetadataRepositoryInstance.NoMatchError()) {
