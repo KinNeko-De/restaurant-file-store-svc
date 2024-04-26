@@ -849,7 +849,7 @@ func TestDownloadFile_FileIdIsNil(t *testing.T) {
 	request := fixture.CreateDownloadFileRequest(t, nil)
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	sut := createSut(t, nil, NewMockFileMetadataRepository(t))
+	sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
 	err := sut.DownloadFile(request, mockStream)
 
 	assert.NotNil(t, err)
@@ -858,6 +858,40 @@ func TestDownloadFile_FileIdIsNil(t *testing.T) {
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
 	assert.Contains(t, actualStatus.Message(), "fileId")
+	assert.Contains(t, actualStatus.Message(), "mandatory")
+}
+
+func TestDownloadRevision_FileIdIsNil(t *testing.T) {
+	otherId, _ := apiProtobuf.ToProtobuf(uuid.New())
+	request := fixture.CreateDownloadRevisionRequest(t, nil, otherId)
+
+	mockStream := fixture.CreateDownloadRevisionStream(t)
+	sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
+	err := sut.DownloadRevision(request, mockStream)
+
+	assert.NotNil(t, err)
+	actualStatus, ok := status.FromError(err)
+	require.True(t, ok, "Expected a gRPC status error")
+	require.NotNil(t, actualStatus)
+	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), "fileId")
+	assert.Contains(t, actualStatus.Message(), "mandatory")
+}
+
+func TestDownloadRevision_RevisionIdIsNil(t *testing.T) {
+	otherId, _ := apiProtobuf.ToProtobuf(uuid.New())
+	request := fixture.CreateDownloadRevisionRequest(t, otherId, nil)
+
+	mockStream := fixture.CreateDownloadRevisionStream(t)
+	sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
+	err := sut.DownloadRevision(request, mockStream)
+
+	assert.NotNil(t, err)
+	actualStatus, ok := status.FromError(err)
+	require.True(t, ok, "Expected a gRPC status error")
+	require.NotNil(t, actualStatus)
+	assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), "revisionId")
 	assert.Contains(t, actualStatus.Message(), "mandatory")
 }
 
@@ -887,6 +921,72 @@ func TestDownloadFile_FileIdIsInvalid(t *testing.T) {
 			require.NotNil(t, actualStatus)
 			assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
 			assert.Contains(t, actualStatus.Message(), "fileId")
+			assert.Contains(t, actualStatus.Message(), "not a valid uuid")
+			assert.Contains(t, actualStatus.Message(), test.uuid)
+		})
+	}
+}
+
+func TestDownloadRevision_FileIdIsInvalid(t *testing.T) {
+	tests := []struct {
+		name string
+		uuid string
+	}{
+		{"Empty", ""},
+		{"InvalidFormat", "433b4b7c-4b1e-4b1e4b1e4b1e"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fileId := &protobuf.Uuid{
+				Value: test.uuid,
+			}
+			otherId, _ := apiProtobuf.ToProtobuf(uuid.New())
+			request := fixture.CreateDownloadRevisionRequest(t, fileId, otherId)
+			mockStream := fixture.CreateDownloadRevisionStream(t)
+
+			sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
+			err := sut.DownloadRevision(request, mockStream)
+
+			assert.NotNil(t, err)
+			actualStatus, ok := status.FromError(err)
+			require.True(t, ok, "Expected a gRPC status error")
+			require.NotNil(t, actualStatus)
+			assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), "fileId")
+			assert.Contains(t, actualStatus.Message(), "not a valid uuid")
+			assert.Contains(t, actualStatus.Message(), test.uuid)
+		})
+	}
+}
+
+func TestDownloadRevision_RevisionIdIsInvalid(t *testing.T) {
+	tests := []struct {
+		name string
+		uuid string
+	}{
+		{"Empty", ""},
+		{"InvalidFormat", "433b4b7c-4b1e-4b1e4b1e4b1e"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			revisionId := &protobuf.Uuid{
+				Value: test.uuid,
+			}
+			otherId, _ := apiProtobuf.ToProtobuf(uuid.New())
+			request := fixture.CreateDownloadRevisionRequest(t, otherId, revisionId)
+			mockStream := fixture.CreateDownloadRevisionStream(t)
+
+			sut := createSut(t, NewMockFileRepository(t), NewMockFileMetadataRepository(t))
+			err := sut.DownloadRevision(request, mockStream)
+
+			assert.NotNil(t, err)
+			actualStatus, ok := status.FromError(err)
+			require.True(t, ok, "Expected a gRPC status error")
+			require.NotNil(t, actualStatus)
+			assert.Equal(t, codes.InvalidArgument, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), "revisionId")
 			assert.Contains(t, actualStatus.Message(), "not a valid uuid")
 			assert.Contains(t, actualStatus.Message(), test.uuid)
 		})
