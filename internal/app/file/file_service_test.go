@@ -1024,6 +1024,38 @@ func TestDownloadFile_FileIdNotFound(t *testing.T) {
 	}
 }
 
+func TestDownloadRevision_FileIdNotFound(t *testing.T) {
+	tests := []struct {
+		name        string
+		notFoundErr error
+	}{
+		{"NotWrappedEror", errors.New("file not found")},
+		{"JoinedError", errors.Join(errors.New("file not found"), errors.New("wrappedError"))},
+		{"WrappedError", fmt.Errorf("wrapper error %w", errors.New("file not found"))},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fileId := uuid.New()
+			revisionId := uuid.New()
+			request := fixture.CreateDownloadRevisionRequestFromUuid(t, fileId, revisionId)
+			mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+			mockFileMetadataRepository.setupFetchFileMetadataReturnsError(t, fileId, test.notFoundErr, test.notFoundErr)
+			mockStream := fixture.CreateDownloadRevisionStream(t)
+
+			sut := createSut(t, NewMockFileRepository(t), mockFileMetadataRepository)
+			actualError := sut.DownloadRevision(request, mockStream)
+
+			assert.NotNil(t, actualError)
+			actualStatus, ok := status.FromError(actualError)
+			require.True(t, ok, "Expected a gRPC status error")
+			require.NotNil(t, actualStatus)
+			assert.Equal(t, codes.NotFound, actualStatus.Code())
+			assert.Contains(t, actualStatus.Message(), fileId.String())
+		})
+	}
+}
+
 func TestDownloadFile_ErrorFetchingMetadataThatIsNotSameAsNotFoundError(t *testing.T) {
 	fileId := uuid.New()
 	fetchErr := errors.New("ups..someting went wrong")
@@ -1035,6 +1067,26 @@ func TestDownloadFile_ErrorFetchingMetadataThatIsNotSameAsNotFoundError(t *testi
 
 	sut := createSut(t, NewMockFileRepository(t), mockFileMetadataRepository)
 	actualError := sut.DownloadFile(request, mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	require.True(t, ok, "Expected a gRPC status error")
+	require.NotNil(t, actualStatus)
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+}
+
+func TestDownloadRevision_ErrorFetchingMetadataThatIsNotSameAsNotFoundError(t *testing.T) {
+	fileId := uuid.New()
+	revisionId := uuid.New()
+	fetchErr := errors.New("ups..someting went wrong")
+	notFoundErr := errors.New("file not found")
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadataReturnsError(t, fileId, fetchErr, notFoundErr)
+	mockStream := fixture.CreateDownloadRevisionStream(t)
+	request := fixture.CreateDownloadRevisionRequestFromUuid(t, fileId, revisionId)
+
+	sut := createSut(t, NewMockFileRepository(t), mockFileMetadataRepository)
+	actualError := sut.DownloadRevision(request, mockStream)
 
 	assert.NotNil(t, actualError)
 	actualStatus, ok := status.FromError(actualError)
@@ -1076,7 +1128,87 @@ func TestDownloadFile_SendMetadataFails(t *testing.T) {
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 }
 
+func TestDownloadRevision_SendMetadataFails(t *testing.T) {
+	fileId := uuid.New()
+	revisionId := uuid.New()
+	request := fixture.CreateDownloadRevisionRequestFromUuid(t, fileId, revisionId)
+	sendErr := errors.New("send error due to network connection as example")
+
+	fileMetadata := FileMetadata{
+		Id: fileId,
+		Revisions: []Revision{
+			{
+				Id:        revisionId,
+				Extension: ".txt",
+				MediaType: "text/plain; charset=utf-8",
+				Size:      1024,
+				CreatedAt: time.Now().UTC(),
+			},
+		},
+	}
+	mockStream := fixture.CreateDownloadRevisionStream(t)
+	mockStream.SetupSendError(t, sendErr)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
+
+	sut := createSut(t, NewMockFileRepository(t), mockFileMetadataRepository)
+	actualError := sut.DownloadRevision(request, mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	require.True(t, ok, "Expected a gRPC status error")
+	require.NotNil(t, actualStatus)
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+}
+
 func TestDownloadFile_FindingTheFileBytesFails(t *testing.T) {
+	fileId := uuid.New()
+	revisionId := uuid.New()
+	request := fixture.CreateDownloadRevisionRequestFromUuid(t, fileId, revisionId)
+	openErr := errors.New("open error because file disapperred most likey due someone fuckeled around manually")
+	expectedExtension := ".txt"
+	expectedMediaType := "text/plain; charset=utf-8"
+	expectedSize := 1024
+	expectedCreatedAt := time.Now().UTC()
+
+	fileMetadata := FileMetadata{
+		Id: fileId,
+		Revisions: []Revision{
+			{
+				Id:        revisionId,
+				Extension: expectedExtension,
+				MediaType: expectedMediaType,
+				Size:      uint64(expectedSize),
+				CreatedAt: expectedCreatedAt,
+			},
+		},
+	}
+
+	mockStream := fixture.CreateDownloadRevisionStream(t)
+	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
+	mockFileRepository := NewMockFileRepository(t)
+	mockFileRepository.setupOpenFileError(t, fileId, revisionId, openErr)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.DownloadRevision(request, mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	require.True(t, ok, "Expected a gRPC status error")
+	require.NotNil(t, actualStatus)
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+	actualStoredFileMetadata := recordActualStoredFileMetadata()
+	assert.NotNil(t, actualStoredFileMetadata)
+	// TODO Assert the metadata contains the right file id as soon as the api is updated
+	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
+	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
+	assert.Equal(t, expectedSize, int(actualStoredFileMetadata.Size))
+	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+}
+
+func TestDownloadRevision_FindingTheFileBytesFails(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
 	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
@@ -1173,6 +1305,55 @@ func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
 }
 
+func TestDownloadRevision_ReadingTheFileBytesFails(t *testing.T) {
+	fileId := uuid.New()
+	revisionId := uuid.New()
+	request := fixture.CreateDownloadRevisionRequestFromUuid(t, fileId, revisionId)
+	readErr := errors.New("read error due to network connection as example")
+	expectedExtension := ".txt"
+	expectedMediaType := "text/plain; charset=utf-8"
+	expectedSize := uint64(1024)
+	expectedCreatedAt := time.Now().UTC()
+
+	fileMetadata := FileMetadata{
+		Id: fileId,
+		Revisions: []Revision{
+			{
+				Id:        revisionId,
+				Extension: expectedExtension,
+				MediaType: expectedMediaType,
+				Size:      expectedSize,
+				CreatedAt: expectedCreatedAt,
+			},
+		},
+	}
+
+	mockStream := fixture.CreateDownloadFileStream(t)
+	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
+	mockReader := ioFixture.NewMockReadCloser(t)
+	mockReader.SetupReadError(t, readErr)
+	mockFileRepository := NewMockFileRepository(t)
+	mockFileRepository.setupOpenFileExistingFile(t, fileId, revisionId, mockReader)
+
+	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
+	actualError := sut.DownloadRevision(request, mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	require.True(t, ok, "Expected a gRPC status error")
+	require.NotNil(t, actualStatus)
+	assert.Equal(t, codes.Internal, actualStatus.Code())
+
+	actualStoredFileMetadata := recordActualStoredFileMetadata()
+	assert.NotNil(t, actualStoredFileMetadata)
+	// TODO Assert the metadata contains the right file id as soon as the api is updated
+	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
+	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
+	assert.Equal(t, int(expectedSize), int(actualStoredFileMetadata.Size))
+	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+}
 func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *testing.T) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
