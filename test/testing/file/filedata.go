@@ -5,6 +5,10 @@ func TextFile() []byte {
 	return []byte{116, 101, 115, 116}
 }
 
+func HelloWorldFile() []byte {
+	return []byte("HelloWorld")
+}
+
 func PdfFile() []byte {
 	return []byte{
 		37, 80, 68, 70, 45, 49, 46, 53, 10, 37, 208, 212, 197, 216, 10, 51, 32, 48, 32, 111,

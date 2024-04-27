@@ -88,6 +88,20 @@ func (s *FileServiceServer) StoreRevision(stream apiRestaurantFile.FileService_S
 	return nil
 }
 
+func getFileId(request *apiRestaurantFile.StoreRevision) (uuid.UUID, error) {
+	requested := request.FileId
+	if requested == nil {
+		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId is mandatory. Please provide a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+
+	fileId, err := apiProtobuf.ToUuid(requested)
+	if err != nil {
+		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId '"+requested.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+
+	return fileId, nil
+}
+
 func createFile(stream apiRestaurantFile.FileService_StoreFileServer, extension string) (*FileMetadata, error) {
 	fileId := uuid.New()
 	revisionId := uuid.New()
@@ -198,16 +212,55 @@ func getRequestedFileId(request *apiRestaurantFile.DownloadFileRequest) (uuid.UU
 	return fileId, nil
 }
 
-func getFileId(request *apiRestaurantFile.StoreRevision) (uuid.UUID, error) {
-	requested := request.FileId
-	if requested == nil {
-		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId is mandatory. Please provide a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
-	}
-
-	fileId, err := apiProtobuf.ToUuid(requested)
+func (s *FileServiceServer) DownloadRevision(request *apiRestaurantFile.DownloadRevisionRequest, stream apiRestaurantFile.FileService_DownloadRevisionServer) error {
+	requestedFileId, requestedRevisionId, err := getRequestedFile(request)
 	if err != nil {
-		return uuid.Nil, status.Error(codes.InvalidArgument, "fileId '"+requested.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+		return err
 	}
 
-	return fileId, nil
+	scopedLogger := logger.Logger.With().Str("fileId", requestedFileId.String()).Str("revisionId", requestedRevisionId.String()).Logger()
+
+	fileMetadata, err := fetchMetadata(stream.Context(), requestedFileId, scopedLogger)
+	if err != nil {
+		return err
+	}
+	revision, err := fileMetadata.GetRevision(requestedRevisionId)
+	if err != nil {
+		return status.Error(codes.NotFound, "revision with id '"+requestedRevisionId.String()+"' not found.")
+	}
+
+	err = sendMetadata(stream, revision)
+	if err != nil {
+		scopedLogger.Err(err).Msg("error sending file metadata")
+		return status.Error(codes.Internal, "error sending file metadata. please retry the request")
+	}
+
+	err = sendFile(stream, requestedFileId, revision.Id, scopedLogger)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getRequestedFile(request *apiRestaurantFile.DownloadRevisionRequest) (uuid.UUID, uuid.UUID, error) {
+	requestedFileId := request.GetFileId()
+	if requestedFileId == nil {
+		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "fileId is mandatory. Please provide a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+	fileId, err := apiProtobuf.ToUuid(requestedFileId)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "fileId '"+requestedFileId.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+
+	requestedRevisionId := request.GetRevisionId()
+	if requestedRevisionId == nil {
+		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "revisionId is mandatory. Please provide a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+	revsionId, err := apiProtobuf.ToUuid(requestedRevisionId)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "revisionId '"+requestedRevisionId.String()+"' is not a valid uuid. The uuid must be in the following format: 12345678-90ab-cdef-1234-567890abcef0")
+	}
+
+	return fileId, revsionId, nil
 }

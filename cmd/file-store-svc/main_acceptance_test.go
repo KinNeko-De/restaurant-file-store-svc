@@ -26,15 +26,20 @@ func TestStoreFile_StoreRevision_DownloadSpecificRevision_DownloadLatestRevision
 	client := apiRestaurantFile.NewFileServiceClient(conn)
 
 	fileName := "test.txt"
+	fileName2 := "hello.txt"
 	expectedExtension := ".txt"
 	expectedMediaType := "text/plain; charset=utf-8"
 	sentFile := fixture.TextFile()
+	sentFile2 := fixture.HelloWorldFile()
 	chunks := fixture.SplitIntoChunks(sentFile, 256)
+	chunks2 := fixture.SplitIntoChunks(sentFile2, 256)
 	expectedSize := uint64(len(sentFile))
+	expectedSize2 := uint64(len(sentFile2))
 
 	storeFileResponse := CreateFile(t, client, fileName, chunks, expectedExtension, expectedMediaType, expectedSize)
-	storeRevisionResponse := StoreRevision(t, client, storeFileResponse.StoredFile.Id, fileName, chunks, expectedExtension, expectedMediaType, expectedSize)
-	DownloadLatestRevision(t, client, storeRevisionResponse, sentFile)
+	storeRevisionResponse := StoreRevision(t, client, storeFileResponse.StoredFile.Id, fileName2, chunks2, expectedExtension, expectedMediaType, expectedSize2)
+	DownloadLatestRevision(t, client, storeRevisionResponse, sentFile2)
+	DownloadPreviousRevision(t, client, storeFileResponse, sentFile)
 }
 
 func CreateFile(t *testing.T, client apiRestaurantFile.FileServiceClient, fileName string, fileChunks [][]byte, expectedExtension string, expectedMediaType string, expectedSize uint64) *apiRestaurantFile.StoreFileResponse {
@@ -137,6 +142,29 @@ func DownloadLatestRevision(t *testing.T, client apiRestaurantFile.FileServiceCl
 	assert.Equal(t, storeFileResponse.StoredFileMetadata.MediaType, downloadMetadata.MediaType)
 	assert.Equal(t, storeFileResponse.StoredFileMetadata.Size, downloadMetadata.Size)
 	assert.Equal(t, exptectedFile, receivedFile)
+}
+
+func DownloadPreviousRevision(t *testing.T, client apiRestaurantFile.FileServiceClient, storeFileResponse *apiRestaurantFile.StoreFileResponse, sentFile []byte) {
+	downloadStream, downloadErr := client.DownloadRevision(context.Background(), &apiRestaurantFile.DownloadRevisionRequest{
+		FileId:     storeFileResponse.StoredFile.Id,
+		RevisionId: storeFileResponse.StoredFile.RevisionId,
+	})
+	require.Nil(t, downloadErr)
+	require.NotNil(t, downloadStream)
+	downloadResponse, err := downloadStream.Recv()
+	require.Nil(t, err)
+	require.NotNil(t, downloadResponse)
+	downloadMetadata := downloadResponse.GetMetadata()
+	receivedFile := RecordDownloadedFile(t, downloadStream)
+
+	require.NotNil(t, downloadMetadata)
+	assert.NotNil(t, downloadMetadata.CreatedAt)
+	assert.WithinDuration(t, storeFileResponse.StoredFileMetadata.CreatedAt.AsTime(), downloadMetadata.CreatedAt.AsTime(), time.Millisecond)
+	assert.Equal(t, storeFileResponse.StoredFileMetadata.Extension, downloadMetadata.Extension)
+	assert.Equal(t, storeFileResponse.StoredFileMetadata.MediaType, downloadMetadata.MediaType)
+	assert.Equal(t, storeFileResponse.StoredFileMetadata.Size, downloadMetadata.Size)
+	assert.Equal(t, sentFile, receivedFile)
+
 }
 
 func RecordDownloadedFile(t *testing.T, downloadStream apiRestaurantFile.FileService_DownloadFileClient) []byte {
