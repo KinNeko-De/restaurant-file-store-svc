@@ -226,7 +226,7 @@ func (s *FileServiceServer) DownloadRevision(request *apiRestaurantFile.Download
 	}
 	revision, err := fileMetadata.GetRevision(requestedRevisionId)
 	if err != nil {
-		return err
+		return status.Error(codes.NotFound, "revision with id '"+requestedRevisionId.String()+"' not found.")
 	}
 
 	err = sendMetadata(stream, revision)

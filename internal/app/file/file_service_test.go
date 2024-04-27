@@ -1056,6 +1056,39 @@ func TestDownloadRevision_FileIdNotFound(t *testing.T) {
 	}
 }
 
+func TestDownloadRevision_RevisionIdNotFound(t *testing.T) {
+	fileId := uuid.New()
+	requestedRevisionId := uuid.New()
+	existingRevisionId := uuid.New()
+	request := fixture.CreateDownloadRevisionRequestFromUuid(t, fileId, requestedRevisionId)
+
+	fileMetadata := FileMetadata{
+		Id: fileId,
+		Revisions: []Revision{
+			{
+				Id:        existingRevisionId,
+				Extension: ".txt",
+				MediaType: "text/plain; charset=utf-8",
+				Size:      1024,
+				CreatedAt: time.Now().UTC(),
+			},
+		},
+	}
+	mockStream := fixture.CreateDownloadRevisionStream(t)
+	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
+	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
+
+	sut := createSut(t, NewMockFileRepository(t), mockFileMetadataRepository)
+	actualError := sut.DownloadRevision(request, mockStream)
+
+	assert.NotNil(t, actualError)
+	actualStatus, ok := status.FromError(actualError)
+	require.True(t, ok, "Expected a gRPC status error")
+	require.NotNil(t, actualStatus)
+	assert.Equal(t, codes.NotFound, actualStatus.Code())
+	assert.Contains(t, actualStatus.Message(), requestedRevisionId.String())
+}
+
 func TestDownloadFile_ErrorFetchingMetadataThatIsNotSameAsNotFoundError(t *testing.T) {
 	fileId := uuid.New()
 	fetchErr := errors.New("ups..someting went wrong")
