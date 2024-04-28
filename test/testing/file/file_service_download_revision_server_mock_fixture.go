@@ -46,14 +46,14 @@ func (mockStream *MockFileService_DownloadRevisionServer) SetupRecordDownloadedF
 	}
 }
 
-func (mockStream *MockFileService_DownloadRevisionServer) SetupRecordStoredFileMetadata(t *testing.T) func() *apiRestaurantFile.StoredFileMetadata {
-	actualStoredFileMetadata := &apiRestaurantFile.StoredFileMetadata{}
+func (mockStream *MockFileService_DownloadRevisionServer) SetupRecordStoredFileMetadata(t *testing.T) func() *apiRestaurantFile.StoredFile {
+	actualStoredFile := &apiRestaurantFile.StoredFile{}
 	mockStream.EXPECT().Send(mock.Anything).Run(func(response *apiRestaurantFile.DownloadFileResponse) {
-		actualStoredFileMetadata = response.GetMetadata()
+		actualStoredFile = response.GetStoredFile()
 	}).Return(nil).Times(1)
 
-	return func() *apiRestaurantFile.StoredFileMetadata {
-		return actualStoredFileMetadata
+	return func() *apiRestaurantFile.StoredFile {
+		return actualStoredFile
 	}
 }
 

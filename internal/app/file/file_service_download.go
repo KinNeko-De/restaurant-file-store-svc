@@ -53,12 +53,14 @@ func sendChunks(fileReader io.ReadCloser, stream apiRestaurantFile.FileService_D
 
 func sendMetadata(stream apiRestaurantFile.FileService_DownloadFileServer, revision Revision) error {
 	return stream.Send(&apiRestaurantFile.DownloadFileResponse{
-		Part: &apiRestaurantFile.DownloadFileResponse_Metadata{
-			Metadata: &apiRestaurantFile.StoredFileMetadata{
-				CreatedAt: timestamppb.New(revision.CreatedAt),
-				Size:      revision.Size,
-				MediaType: revision.MediaType,
-				Extension: revision.Extension,
+		Part: &apiRestaurantFile.DownloadFileResponse_StoredFile{
+			StoredFile: &apiRestaurantFile.StoredFile{
+				Metadata: &apiRestaurantFile.StoredFile_Metadata{
+					CreatedAt: timestamppb.New(revision.CreatedAt),
+					Size:      revision.Size,
+					MediaType: revision.MediaType,
+					Extension: revision.Extension,
+				},
 			},
 		},
 	})
