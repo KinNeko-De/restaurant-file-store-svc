@@ -55,12 +55,9 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
-	assert.NotNil(t, actualResponse.StoredFileMetadata)
-	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
-	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
-	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
-	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
-
+	assert.Equal(t, actualStoredFileId.String(), actualResponse.StoredFile.Id.Value)
+	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
+	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
 	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata)
 	assert.NotNil(t, storedFileMetadata.Id)
@@ -111,12 +108,7 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffByt
 	assert.NotNil(t, actualResponse.StoredFile.Id)
 	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
-	assert.NotNil(t, actualResponse.StoredFileMetadata)
-	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
-	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
-	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
-	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
-
+	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
 	actualStoredRevision := recordStoredRevision()
 	assert.NotNil(t, actualStoredRevision)
 	assert.NotNil(t, actualStoredRevision.Id)
@@ -132,6 +124,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	sentFileName := "test.pdf"
 	expectedSize := uint64(512)
 	expectedMediaType := "application/pdf"
+	expectedFileExtension := ".pdf"
 	mockStream := fixture.CreateStoreFileStream(t)
 	mockStream.SetupSuccessfulSend(t, sentFileName, chunks)
 	recordActualResponse := mockStream.SetupSendAndClose(t)
@@ -149,10 +142,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 
 	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
-	assert.NotNil(t, actualResponse.StoredFileMetadata)
-	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
-	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
-
+	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
 	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata)
 	assert.Len(t, storedFileMetadata.Revisions, 1)
@@ -172,6 +162,7 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *
 	sentFileName := "test.pdf"
 	expectedSize := uint64(512)
 	expectedMediaType := "application/pdf"
+	expectedFileExtension := ".pdf"
 	mockStream := fixture.CreateStoreRevisionStream(t)
 	mockStream.SetupSuccessfulSend(t, existingFileId, sentFileName, chunks)
 	recordActualResponse := mockStream.SetupSendAndClose(t)
@@ -189,10 +180,7 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *
 
 	actualResponse := recordActualResponse()
 	assert.NotNil(t, actualResponse)
-	assert.NotNil(t, actualResponse.StoredFileMetadata)
-	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
-	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
-
+	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
 	actualStoredRevision := recordStoredRevision()
 	assert.NotNil(t, actualStoredRevision.Id)
 	assert.Equal(t, expectedSize, actualStoredRevision.Size)
@@ -230,12 +218,7 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
-	assert.NotNil(t, actualResponse.StoredFileMetadata)
-	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
-	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
-	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
-	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
-
+	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
 	storedFileMetadata := recordStoredFileMetadata()
 	assert.NotNil(t, storedFileMetadata)
 	assert.NotNil(t, storedFileMetadata.Id)
@@ -280,12 +263,7 @@ func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512Sn
 	assert.NotNil(t, actualResponse.StoredFile)
 	assert.NotNil(t, actualResponse.StoredFile.Id)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
-	assert.NotNil(t, actualResponse.StoredFileMetadata)
-	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
-	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
-	assert.Equal(t, expectedFileExtension, actualResponse.StoredFileMetadata.Extension)
-	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
-
+	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
 	actualStoredRevision := recordStoreRevision()
 	assert.NotNil(t, actualStoredRevision.Id)
 	assert.Equal(t, expectedSize, actualStoredRevision.Size)
@@ -1199,9 +1177,9 @@ func TestDownloadFile_FindingTheFileBytesFails(t *testing.T) {
 	revisionId := uuid.New()
 	request := fixture.CreateDownloadRevisionRequestFromUuid(t, fileId, revisionId)
 	openErr := errors.New("open error because file disapperred most likey due someone fuckeled around manually")
-	expectedExtension := ".txt"
+	expectedFileExtension := ".txt"
 	expectedMediaType := "text/plain; charset=utf-8"
-	expectedSize := 1024
+	expectedSize := uint64(1024)
 	expectedCreatedAt := time.Now().UTC()
 
 	fileMetadata := FileMetadata{
@@ -1209,9 +1187,9 @@ func TestDownloadFile_FindingTheFileBytesFails(t *testing.T) {
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: expectedExtension,
+				Extension: expectedFileExtension,
 				MediaType: expectedMediaType,
-				Size:      uint64(expectedSize),
+				Size:      expectedSize,
 				CreatedAt: expectedCreatedAt,
 			},
 		},
@@ -1232,13 +1210,12 @@ func TestDownloadFile_FindingTheFileBytesFails(t *testing.T) {
 	require.True(t, ok, "Expected a gRPC status error")
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.Internal, actualStatus.Code())
-	actualStoredFileMetadata := recordActualStoredFileMetadata()
-	assert.NotNil(t, actualStoredFileMetadata)
-	// TODO Assert the metadata contains the right file id as soon as the api is updated
-	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
-	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
-	assert.Equal(t, expectedSize, int(actualStoredFileMetadata.Size))
-	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	actualStoredFile := recordActualStoredFileMetadata()
+	assert.NotNil(t, actualStoredFile)
+	assert.Equal(t, fileId.String(), actualStoredFile.Id.GetValue())
+	assert.Equal(t, revisionId.String(), actualStoredFile.RevisionId.GetValue())
+	assertMetadata(t, actualStoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
+	assert.Equal(t, expectedCreatedAt, actualStoredFile.Metadata.CreatedAt.AsTime())
 }
 
 func TestDownloadRevision_FindingTheFileBytesFails(t *testing.T) {
@@ -1246,9 +1223,9 @@ func TestDownloadRevision_FindingTheFileBytesFails(t *testing.T) {
 	revisionId := uuid.New()
 	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	openErr := errors.New("open error because file disapperred most likey due someone fuckeled around manually")
-	expectedExtension := ".txt"
+	expectedFileExtension := ".txt"
 	expectedMediaType := "text/plain; charset=utf-8"
-	expectedSize := 1024
+	expectedSize := uint64(1024)
 	expectedCreatedAt := time.Now().UTC()
 
 	fileMetadata := FileMetadata{
@@ -1256,9 +1233,9 @@ func TestDownloadRevision_FindingTheFileBytesFails(t *testing.T) {
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: expectedExtension,
+				Extension: expectedFileExtension,
 				MediaType: expectedMediaType,
-				Size:      uint64(expectedSize),
+				Size:      expectedSize,
 				CreatedAt: expectedCreatedAt,
 			},
 		},
@@ -1279,13 +1256,12 @@ func TestDownloadRevision_FindingTheFileBytesFails(t *testing.T) {
 	require.True(t, ok, "Expected a gRPC status error")
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.Internal, actualStatus.Code())
-	actualStoredFileMetadata := recordActualStoredFileMetadata()
-	assert.NotNil(t, actualStoredFileMetadata)
-	// TODO Assert the metadata contains the right file id as soon as the api is updated
-	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
-	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
-	assert.Equal(t, expectedSize, int(actualStoredFileMetadata.Size))
-	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	actualStoredFile := recordActualStoredFileMetadata()
+	assert.NotNil(t, actualStoredFile)
+	assert.Equal(t, fileId.String(), actualStoredFile.Id.GetValue())
+	assert.Equal(t, revisionId.String(), actualStoredFile.RevisionId.GetValue())
+	assertMetadata(t, actualStoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
+	assert.Equal(t, expectedCreatedAt, actualStoredFile.Metadata.CreatedAt.AsTime())
 }
 
 func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
@@ -1293,7 +1269,7 @@ func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 	revisionId := uuid.New()
 	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	readErr := errors.New("read error due to network connection as example")
-	expectedExtension := ".txt"
+	expectedFileExtension := ".txt"
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedSize := uint64(1024)
 	expectedCreatedAt := time.Now().UTC()
@@ -1303,7 +1279,7 @@ func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: expectedExtension,
+				Extension: expectedFileExtension,
 				MediaType: expectedMediaType,
 				Size:      expectedSize,
 				CreatedAt: expectedCreatedAt,
@@ -1329,13 +1305,12 @@ func TestDownloadFile_ReadingTheFileBytesFails(t *testing.T) {
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 
-	actualStoredFileMetadata := recordActualStoredFileMetadata()
-	assert.NotNil(t, actualStoredFileMetadata)
-	// TODO Assert the metadata contains the right file id as soon as the api is updated
-	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
-	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
-	assert.Equal(t, int(expectedSize), int(actualStoredFileMetadata.Size))
-	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	actualStoredFile := recordActualStoredFileMetadata()
+	assert.NotNil(t, actualStoredFile)
+	assert.Equal(t, fileId.String(), actualStoredFile.Id.GetValue())
+	assert.Equal(t, revisionId.String(), actualStoredFile.RevisionId.GetValue())
+	assertMetadata(t, actualStoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
+	assert.Equal(t, expectedCreatedAt, actualStoredFile.Metadata.CreatedAt.AsTime())
 }
 
 func TestDownloadRevision_ReadingTheFileBytesFails(t *testing.T) {
@@ -1343,7 +1318,7 @@ func TestDownloadRevision_ReadingTheFileBytesFails(t *testing.T) {
 	revisionId := uuid.New()
 	request := fixture.CreateDownloadRevisionRequestFromUuid(t, fileId, revisionId)
 	readErr := errors.New("read error due to network connection as example")
-	expectedExtension := ".txt"
+	expectedFileExtension := ".txt"
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedSize := uint64(1024)
 	expectedCreatedAt := time.Now().UTC()
@@ -1353,7 +1328,7 @@ func TestDownloadRevision_ReadingTheFileBytesFails(t *testing.T) {
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: expectedExtension,
+				Extension: expectedFileExtension,
 				MediaType: expectedMediaType,
 				Size:      expectedSize,
 				CreatedAt: expectedCreatedAt,
@@ -1362,7 +1337,7 @@ func TestDownloadRevision_ReadingTheFileBytesFails(t *testing.T) {
 	}
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordActualStoredFile := mockStream.SetupRecordStoredFileMetadata(t)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
 	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
 	mockReader := ioFixture.NewMockReadCloser(t)
@@ -1379,13 +1354,12 @@ func TestDownloadRevision_ReadingTheFileBytesFails(t *testing.T) {
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 
-	actualStoredFileMetadata := recordActualStoredFileMetadata()
-	assert.NotNil(t, actualStoredFileMetadata)
-	// TODO Assert the metadata contains the right file id as soon as the api is updated
-	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
-	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
-	assert.Equal(t, int(expectedSize), int(actualStoredFileMetadata.Size))
-	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	actualStoredFile := recordActualStoredFile()
+	assert.NotNil(t, actualStoredFile)
+	assert.Equal(t, fileId.String(), actualStoredFile.Id.GetValue())
+	assert.Equal(t, revisionId.String(), actualStoredFile.RevisionId.GetValue())
+	assertMetadata(t, actualStoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
+	assert.Equal(t, expectedCreatedAt, actualStoredFile.Metadata.CreatedAt.AsTime())
 }
 
 func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *testing.T) {
@@ -1394,7 +1368,7 @@ func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *tes
 	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	file := fixture.TextFile()
 	closeErr := errors.New("close error due to network connection as example")
-	expectedExtension := ".txt"
+	expectedFileExtension := ".txt"
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedSize := uint64(1024)
 	expectedCreatedAt := time.Now().UTC()
@@ -1404,7 +1378,7 @@ func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *tes
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: expectedExtension,
+				Extension: expectedFileExtension,
 				MediaType: expectedMediaType,
 				Size:      expectedSize,
 				CreatedAt: expectedCreatedAt,
@@ -1413,7 +1387,7 @@ func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *tes
 	}
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordActualStoredFile := mockStream.SetupRecordStoredFileMetadata(t)
 	recordActualDownloadedFile := mockStream.SetupRecordDownloadedFile(t)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
 	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
@@ -1427,13 +1401,12 @@ func TestDownloadFile_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t *tes
 	actualError := sut.DownloadFile(request, mockStream)
 
 	assert.Nil(t, actualError)
-	actualStoredFileMetadata := recordActualStoredFileMetadata()
-	assert.NotNil(t, actualStoredFileMetadata)
-	// TODO Assert the metadata contains the right file id as soon as the api is updated
-	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
-	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
-	assert.Equal(t, expectedSize, actualStoredFileMetadata.Size)
-	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	actualStoredFile := recordActualStoredFile()
+	assert.NotNil(t, actualStoredFile)
+	assert.Equal(t, fileId.String(), actualStoredFile.Id.GetValue())
+	assert.Equal(t, revisionId.String(), actualStoredFile.RevisionId.GetValue())
+	assertMetadata(t, actualStoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
+	assert.Equal(t, expectedCreatedAt, actualStoredFile.Metadata.CreatedAt.AsTime())
 	assert.Equal(t, file, recordActualDownloadedFile())
 }
 
@@ -1443,7 +1416,7 @@ func TestDownloadRevision_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t 
 	request := fixture.CreateDownloadRevisionRequestFromUuid(t, fileId, revisionId)
 	file := fixture.TextFile()
 	closeErr := errors.New("close error due to network connection as example")
-	expectedExtension := ".txt"
+	expectedFileExtension := ".txt"
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedSize := uint64(1024)
 	expectedCreatedAt := time.Now().UTC()
@@ -1453,7 +1426,7 @@ func TestDownloadRevision_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t 
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: expectedExtension,
+				Extension: expectedFileExtension,
 				MediaType: expectedMediaType,
 				Size:      expectedSize,
 				CreatedAt: expectedCreatedAt,
@@ -1462,7 +1435,7 @@ func TestDownloadRevision_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t 
 	}
 
 	mockStream := fixture.CreateDownloadRevisionStream(t)
-	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordActualStoredFile := mockStream.SetupRecordStoredFileMetadata(t)
 	recordActualDownloadedFile := mockStream.SetupRecordDownloadedFile(t)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
 	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
@@ -1476,13 +1449,12 @@ func TestDownloadRevision_ClosingTheFileBytesFails_ErrorIsNotReportedToClient(t 
 	actualError := sut.DownloadRevision(request, mockStream)
 
 	assert.Nil(t, actualError)
-	actualStoredFileMetadata := recordActualStoredFileMetadata()
-	assert.NotNil(t, actualStoredFileMetadata)
-	// TODO Assert the metadata contains the right file id as soon as the api is updated
-	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
-	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
-	assert.Equal(t, expectedSize, actualStoredFileMetadata.Size)
-	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	actualStoredFile := recordActualStoredFile()
+	assert.NotNil(t, actualStoredFile)
+	assert.Equal(t, fileId.String(), actualStoredFile.Id.GetValue())
+	assert.Equal(t, revisionId.String(), actualStoredFile.RevisionId.GetValue())
+	assertMetadata(t, actualStoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
+	assert.Equal(t, expectedCreatedAt, actualStoredFile.Metadata.CreatedAt.AsTime())
 	assert.Equal(t, file, recordActualDownloadedFile())
 }
 
@@ -1492,7 +1464,7 @@ func TestDownloadFile_SendFileBytesFails(t *testing.T) {
 	sendErr := errors.New("read error due to network connection as example")
 	request := fixture.CreateDownloadFileRequestFromUuid(t, fileId)
 	file := fixture.TextFile()
-	expectedExtension := ".txt"
+	expectedFileExtension := ".txt"
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedSize := uint64(1024)
 	expectedCreatedAt := time.Now().UTC()
@@ -1502,7 +1474,7 @@ func TestDownloadFile_SendFileBytesFails(t *testing.T) {
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: expectedExtension,
+				Extension: expectedFileExtension,
 				MediaType: expectedMediaType,
 				Size:      expectedSize,
 				CreatedAt: expectedCreatedAt,
@@ -1511,7 +1483,7 @@ func TestDownloadFile_SendFileBytesFails(t *testing.T) {
 	}
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordActualStoredFile := mockStream.SetupRecordStoredFileMetadata(t)
 	mockStream.SetupSendError(t, sendErr)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
 	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
@@ -1529,13 +1501,12 @@ func TestDownloadFile_SendFileBytesFails(t *testing.T) {
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 
-	actualStoredFileMetadata := recordActualStoredFileMetadata()
-	assert.NotNil(t, actualStoredFileMetadata)
-	// TODO Assert the metadata contains the right file id as soon as the api is updated
-	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
-	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
-	assert.Equal(t, expectedSize, actualStoredFileMetadata.Size)
-	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	actualStoredFile := recordActualStoredFile()
+	assert.NotNil(t, actualStoredFile)
+	assert.Equal(t, fileId.String(), actualStoredFile.Id.GetValue())
+	assert.Equal(t, revisionId.String(), actualStoredFile.RevisionId.GetValue())
+	assertMetadata(t, actualStoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
+	assert.Equal(t, expectedCreatedAt, actualStoredFile.Metadata.CreatedAt.AsTime())
 }
 
 func TestDownloadRevision_SendFileBytesFails(t *testing.T) {
@@ -1544,7 +1515,7 @@ func TestDownloadRevision_SendFileBytesFails(t *testing.T) {
 	sendErr := errors.New("read error due to network connection as example")
 	request := fixture.CreateDownloadRevisionRequestFromUuid(t, fileId, revisionId)
 	file := fixture.TextFile()
-	expectedExtension := ".txt"
+	expectedFileExtension := ".txt"
 	expectedMediaType := "text/plain; charset=utf-8"
 	expectedSize := uint64(1024)
 	expectedCreatedAt := time.Now().UTC()
@@ -1554,7 +1525,7 @@ func TestDownloadRevision_SendFileBytesFails(t *testing.T) {
 		Revisions: []Revision{
 			{
 				Id:        revisionId,
-				Extension: expectedExtension,
+				Extension: expectedFileExtension,
 				MediaType: expectedMediaType,
 				Size:      expectedSize,
 				CreatedAt: expectedCreatedAt,
@@ -1563,7 +1534,7 @@ func TestDownloadRevision_SendFileBytesFails(t *testing.T) {
 	}
 
 	mockStream := fixture.CreateDownloadRevisionStream(t)
-	recordActualStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordActualStoredFile := mockStream.SetupRecordStoredFileMetadata(t)
 	mockStream.SetupSendError(t, sendErr)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
 	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
@@ -1581,13 +1552,12 @@ func TestDownloadRevision_SendFileBytesFails(t *testing.T) {
 	require.NotNil(t, actualStatus)
 	assert.Equal(t, codes.Internal, actualStatus.Code())
 
-	actualStoredFileMetadata := recordActualStoredFileMetadata()
-	assert.NotNil(t, actualStoredFileMetadata)
-	// TODO Assert the metadata contains the right file id as soon as the api is updated
-	assert.Equal(t, expectedExtension, actualStoredFileMetadata.Extension)
-	assert.Equal(t, expectedMediaType, actualStoredFileMetadata.MediaType)
-	assert.Equal(t, expectedSize, actualStoredFileMetadata.Size)
-	assert.Equal(t, expectedCreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	actualStoredFile := recordActualStoredFile()
+	assert.NotNil(t, actualStoredFile)
+	assert.Equal(t, fileId.String(), actualStoredFile.Id.GetValue())
+	assert.Equal(t, revisionId.String(), actualStoredFile.RevisionId.GetValue())
+	assertMetadata(t, actualStoredFile.Metadata, expectedSize, expectedMediaType, expectedFileExtension)
+	assert.Equal(t, expectedCreatedAt, actualStoredFile.Metadata.CreatedAt.AsTime())
 }
 
 func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *testing.T) {
@@ -1618,7 +1588,7 @@ func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *tes
 	}
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	recordStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordStoredFile := mockStream.SetupRecordStoredFileMetadata(t)
 	recordDownloadedFile := mockStream.SetupRecordDownloadedFile(t)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
 	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
@@ -1631,11 +1601,12 @@ func TestDownloadFile_LatestRevisionIsDownloaded_FileIsSplittedIntoChunks(t *tes
 	actualError := sut.DownloadFile(request, mockStream)
 
 	assert.Nil(t, actualError)
-	actualStoredFileMetadata := recordStoredFileMetadata()
-	assert.Equal(t, latestedRevision.Extension, actualStoredFileMetadata.Extension)
-	assert.Equal(t, latestedRevision.MediaType, actualStoredFileMetadata.MediaType)
-	assert.Equal(t, latestedRevision.Size, actualStoredFileMetadata.Size)
-	assert.Equal(t, latestedRevision.CreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	actualStoredFile := recordStoredFile()
+	assert.NotNil(t, actualStoredFile)
+	assert.Equal(t, fileId.String(), actualStoredFile.Id.GetValue())
+	assert.Equal(t, latestedRevision.Id.String(), actualStoredFile.RevisionId.GetValue())
+	assertMetadata(t, actualStoredFile.Metadata, latestedRevision.Size, latestedRevision.MediaType, latestedRevision.Extension)
+	assert.Equal(t, latestedRevision.CreatedAt, actualStoredFile.Metadata.CreatedAt.AsTime())
 	assert.Equal(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc, recordDownloadedFile())
 }
 
@@ -1669,7 +1640,7 @@ func TestDownloadRevision_FirstRevisionIsDownloaded_FileIsSplittedIntoChunks(t *
 	}
 
 	mockStream := fixture.CreateDownloadFileStream(t)
-	recordStoredFileMetadata := mockStream.SetupRecordStoredFileMetadata(t)
+	recordStoredFile := mockStream.SetupRecordStoredFileMetadata(t)
 	recordDownloadedFile := mockStream.SetupRecordDownloadedFile(t)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
 	mockFileMetadataRepository.setupFetchFileMetadata(t, fileId, fileMetadata)
@@ -1682,11 +1653,12 @@ func TestDownloadRevision_FirstRevisionIsDownloaded_FileIsSplittedIntoChunks(t *
 	actualError := sut.DownloadRevision(request, mockStream)
 
 	assert.Nil(t, actualError)
-	actualStoredFileMetadata := recordStoredFileMetadata()
-	assert.Equal(t, firstRevision.Extension, actualStoredFileMetadata.Extension)
-	assert.Equal(t, firstRevision.MediaType, actualStoredFileMetadata.MediaType)
-	assert.Equal(t, firstRevision.Size, actualStoredFileMetadata.Size)
-	assert.Equal(t, firstRevision.CreatedAt, actualStoredFileMetadata.CreatedAt.AsTime())
+	actualStoredFile := recordStoredFile()
+	assert.NotNil(t, actualStoredFile)
+	assert.Equal(t, fileId.String(), actualStoredFile.Id.GetValue())
+	assert.Equal(t, firstRevision.Id.String(), actualStoredFile.RevisionId.GetValue())
+	assertMetadata(t, actualStoredFile.Metadata, firstRevision.Size, firstRevision.MediaType, firstRevision.Extension)
+	assert.Equal(t, firstRevision.CreatedAt, actualStoredFile.Metadata.CreatedAt.AsTime())
 	assert.Equal(t, fileThatIsBiggerThanTheMaxChunkSizeForGrpc, recordDownloadedFile())
 }
 
@@ -1696,4 +1668,12 @@ func createSut(t *testing.T, mockFileRepository *MockFileRepository, mockFileMet
 	FileRepositoryInstance = mockFileRepository
 	FileMetadataRepositoryInstance = mockFileMetadataRepository
 	return sut
+}
+
+func assertMetadata(t *testing.T, actualMetadata *apiRestaurantFile.StoredFile_Metadata, expectedSize uint64, expectedMediaType string, expectedFileExtension string) {
+	assert.NotNil(t, actualMetadata)
+	assert.Equal(t, expectedSize, actualMetadata.Size)
+	assert.Equal(t, expectedMediaType, actualMetadata.MediaType)
+	assert.Equal(t, expectedFileExtension, actualMetadata.Extension)
+	assert.NotNil(t, actualMetadata.CreatedAt)
 }
