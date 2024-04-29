@@ -72,11 +72,11 @@ func CreateFile(t *testing.T, client apiRestaurantFile.FileServiceClient, fileNa
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.Id)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.RevisionId)
-	assert.NotNil(t, actualResponse.StoredFileMetadata)
-	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
-	assert.Equal(t, expectedExtension, actualResponse.StoredFileMetadata.Extension)
-	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
-	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
+	assert.NotNil(t, actualResponse.StoredFile.Metadata)
+	assert.NotNil(t, actualResponse.StoredFile.Metadata.CreatedAt)
+	assert.Equal(t, expectedExtension, actualResponse.StoredFile.Metadata.Extension)
+	assert.Equal(t, expectedMediaType, actualResponse.StoredFile.Metadata.MediaType)
+	assert.Equal(t, expectedSize, actualResponse.StoredFile.Metadata.Size)
 
 	return actualResponse
 }
@@ -114,11 +114,11 @@ func StoreRevision(t *testing.T, client apiRestaurantFile.FileServiceClient, fil
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.Id)
 	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
 	assert.NotEqual(t, uuid.Nil, actualResponse.StoredFile.RevisionId)
-	assert.NotNil(t, actualResponse.StoredFileMetadata)
-	assert.NotNil(t, actualResponse.StoredFileMetadata.CreatedAt)
-	assert.Equal(t, expectedExtension, actualResponse.StoredFileMetadata.Extension)
-	assert.Equal(t, expectedMediaType, actualResponse.StoredFileMetadata.MediaType)
-	assert.Equal(t, expectedSize, actualResponse.StoredFileMetadata.Size)
+	assert.NotNil(t, actualResponse.StoredFile.Metadata)
+	assert.NotNil(t, actualResponse.StoredFile.Metadata.CreatedAt)
+	assert.Equal(t, expectedExtension, actualResponse.StoredFile.Metadata.Extension)
+	assert.Equal(t, expectedMediaType, actualResponse.StoredFile.Metadata.MediaType)
+	assert.Equal(t, expectedSize, actualResponse.StoredFile.Metadata.Size)
 
 	return actualResponse
 }
@@ -132,15 +132,15 @@ func DownloadLatestRevision(t *testing.T, client apiRestaurantFile.FileServiceCl
 	downloadResponse, err := downloadStream.Recv()
 	require.Nil(t, err)
 	require.NotNil(t, downloadResponse)
-	downloadMetadata := downloadResponse.GetMetadata()
+	downloadedFile := downloadResponse.GetStoredFile()
 	receivedFile := RecordDownloadedFile(t, downloadStream)
 
-	require.NotNil(t, downloadMetadata)
-	assert.NotNil(t, downloadMetadata.CreatedAt)
-	assert.WithinDuration(t, storeFileResponse.StoredFileMetadata.CreatedAt.AsTime(), downloadMetadata.CreatedAt.AsTime(), time.Millisecond)
-	assert.Equal(t, storeFileResponse.StoredFileMetadata.Extension, downloadMetadata.Extension)
-	assert.Equal(t, storeFileResponse.StoredFileMetadata.MediaType, downloadMetadata.MediaType)
-	assert.Equal(t, storeFileResponse.StoredFileMetadata.Size, downloadMetadata.Size)
+	require.NotNil(t, downloadedFile)
+	assert.NotNil(t, downloadedFile.Metadata.CreatedAt)
+	assert.WithinDuration(t, storeFileResponse.StoredFile.Metadata.CreatedAt.AsTime(), downloadedFile.Metadata.CreatedAt.AsTime(), time.Millisecond)
+	assert.Equal(t, storeFileResponse.StoredFile.Metadata.Extension, downloadedFile.Metadata.Extension)
+	assert.Equal(t, storeFileResponse.StoredFile.Metadata.MediaType, downloadedFile.Metadata.MediaType)
+	assert.Equal(t, storeFileResponse.StoredFile.Metadata.Size, downloadedFile.Metadata.Size)
 	assert.Equal(t, exptectedFile, receivedFile)
 }
 
@@ -154,15 +154,15 @@ func DownloadPreviousRevision(t *testing.T, client apiRestaurantFile.FileService
 	downloadResponse, err := downloadStream.Recv()
 	require.Nil(t, err)
 	require.NotNil(t, downloadResponse)
-	downloadMetadata := downloadResponse.GetMetadata()
+	downloadedFile := downloadResponse.GetStoredFile()
 	receivedFile := RecordDownloadedFile(t, downloadStream)
 
-	require.NotNil(t, downloadMetadata)
-	assert.NotNil(t, downloadMetadata.CreatedAt)
-	assert.WithinDuration(t, storeFileResponse.StoredFileMetadata.CreatedAt.AsTime(), downloadMetadata.CreatedAt.AsTime(), time.Millisecond)
-	assert.Equal(t, storeFileResponse.StoredFileMetadata.Extension, downloadMetadata.Extension)
-	assert.Equal(t, storeFileResponse.StoredFileMetadata.MediaType, downloadMetadata.MediaType)
-	assert.Equal(t, storeFileResponse.StoredFileMetadata.Size, downloadMetadata.Size)
+	require.NotNil(t, downloadedFile)
+	assert.NotNil(t, downloadedFile.Metadata.CreatedAt)
+	assert.WithinDuration(t, storeFileResponse.StoredFile.Metadata.CreatedAt.AsTime(), downloadedFile.Metadata.CreatedAt.AsTime(), time.Millisecond)
+	assert.Equal(t, storeFileResponse.StoredFile.Metadata.Extension, downloadedFile.Metadata.Extension)
+	assert.Equal(t, storeFileResponse.StoredFile.Metadata.MediaType, downloadedFile.Metadata.MediaType)
+	assert.Equal(t, storeFileResponse.StoredFile.Metadata.Size, downloadedFile.Metadata.Size)
 	assert.Equal(t, sentFile, receivedFile)
 
 }
