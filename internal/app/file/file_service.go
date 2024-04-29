@@ -186,7 +186,7 @@ func (s *FileServiceServer) DownloadFile(request *apiRestaurantFile.DownloadFile
 	}
 	revision := fileMetadata.LatestRevision()
 
-	err = sendMetadata(stream, revision)
+	err = sendMetadata(stream, requestedFileId, revision)
 	if err != nil {
 		scopedLogger.Err(err).Msg("error sending file metadata")
 		return status.Error(codes.Internal, "error sending file metadata. please retry the request")
@@ -229,7 +229,7 @@ func (s *FileServiceServer) DownloadRevision(request *apiRestaurantFile.Download
 		return status.Error(codes.NotFound, "revision with id '"+requestedRevisionId.String()+"' not found.")
 	}
 
-	err = sendMetadata(stream, revision)
+	err = sendMetadata(stream, requestedFileId, revision)
 	if err != nil {
 		scopedLogger.Err(err).Msg("error sending file metadata")
 		return status.Error(codes.Internal, "error sending file metadata. please retry the request")
