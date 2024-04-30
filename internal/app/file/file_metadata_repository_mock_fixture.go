@@ -53,9 +53,9 @@ func (mockFileMetadataRepository *MockFileMetadataRepository) setupFileMetadataR
 
 }
 
-func (mockFileMetadataRepository *MockFileMetadataRepository) setupFetchFileMetadata(t *testing.T, fileId uuid.UUID, fileMetadata FileMetadata) {
+func (mockFileMetadataRepository *MockFileMetadataRepository) setupFetchFileMetadata(t *testing.T, fileMetadata FileMetadata) {
 	t.Helper()
-	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileId).Return(fileMetadata, nil).Times(1)
+	mockFileMetadataRepository.EXPECT().FetchFileMetadata(mock.Anything, fileMetadata.Id).Return(fileMetadata, nil).Times(1)
 	mockFileMetadataRepository.EXPECT().NotFoundError().Return(errors.New("not expected error")).Times(1)
 }
 
