@@ -24,7 +24,7 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	sentFile := fixture.TextFile()
 	chunks := [][]byte{sentFile}
 	sentFileName := "test.txt"
-	expectedMetada := ExpectedMetadata{
+	expectedMetadata := ExpectedMetadata{
 		Size:      4,
 		MediaType: "text/plain; charset=utf-8",
 		Extension: ".txt",
@@ -47,25 +47,8 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t
 	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
 	assertUuidIsGenerated(t, actualStoredFileId)
 	assertUuidIsGenerated(t, actualStoredRevisionId)
-
-	actualResponse := recordActualResponse()
-	assert.NotNil(t, actualResponse)
-	assert.NotNil(t, actualResponse.StoredFile)
-	assert.NotNil(t, actualResponse.StoredFile.Id)
-	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
-	assert.Equal(t, actualStoredFileId.String(), actualResponse.StoredFile.Id.Value)
-	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
-	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedMetada)
-	storedFileMetadata := recordStoredFileMetadata()
-	assert.NotNil(t, storedFileMetadata)
-	assert.NotNil(t, storedFileMetadata.Id)
-	assert.NotNil(t, storedFileMetadata.Revisions)
-	assert.Len(t, storedFileMetadata.Revisions, 1)
-	assert.NotNil(t, storedFileMetadata.Revisions[0].Id)
-	assert.Equal(t, expectedMetada.Size, storedFileMetadata.Revisions[0].Size)
-	assert.Equal(t, expectedMetada.MediaType, storedFileMetadata.Revisions[0].MediaType)
-	assert.Equal(t, expectedMetada.Extension, storedFileMetadata.Revisions[0].Extension)
-	assert.NotNil(t, storedFileMetadata.Revisions[0].CreatedAt)
+	assertNewStoredFileMetadata(t, recordStoredFileMetadata(), expectedMetadata)
+	assertStoreNewFile(t, recordActualResponse(), actualStoredFileId, actualStoredRevisionId, expectedMetadata)
 }
 
 func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
@@ -95,14 +78,9 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsSmallerThan512SniffByt
 	assert.Nil(t, actualError)
 	actualStoredRevisionId := recordStoredRevisionId()
 	assertUuidIsGenerated(t, actualStoredRevisionId)
-	actualResponse := recordActualResponse()
-	assert.NotNil(t, actualResponse)
-	assert.NotNil(t, actualResponse.StoredFile)
-	assert.NotNil(t, actualResponse.StoredFile.Id)
-	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
-	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
-	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedMetada)
-	assertNewStoredRevision(t, recordStoredRevision(), expectedMetada)
+	storedRevision := recordStoredRevision()
+	assertNewStoredRevision(t, storedRevision, expectedMetada)
+	assertStoreNewRevision(t, recordActualResponse(), existingFileId, storedRevision)
 }
 
 func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *testing.T) {
@@ -129,16 +107,11 @@ func TestStoreFile_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *test
 	actualError := sut.StoreFile(mockStream)
 
 	assert.Nil(t, actualError)
-	actualResponse := recordActualResponse()
-	assert.NotNil(t, actualResponse)
-	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedMetadata)
-	storedFileMetadata := recordStoredFileMetadata()
-	assert.NotNil(t, storedFileMetadata)
-	assert.Len(t, storedFileMetadata.Revisions, 1)
-	assert.NotNil(t, storedFileMetadata.Revisions[0].Id)
-	assert.Equal(t, expectedMetadata.Size, storedFileMetadata.Revisions[0].Size)
-	assert.Equal(t, expectedMetadata.MediaType, storedFileMetadata.Revisions[0].MediaType)
-	assertStoredIdAreNotNil(t, recordStoredFileId)
+	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
+	assertUuidIsGenerated(t, actualStoredFileId)
+	assertUuidIsGenerated(t, actualStoredRevisionId)
+	assertNewStoredFileMetadata(t, recordStoredFileMetadata(), expectedMetadata)
+	assertStoreNewFile(t, recordActualResponse(), actualStoredFileId, actualStoredRevisionId, expectedMetadata)
 }
 
 func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *testing.T) {
@@ -166,16 +139,11 @@ func TestStoreRevision_FileDataIsSentInOneChunk_FileSizeIsExact512SniffBytes(t *
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.Nil(t, actualError)
-	actualResponse := recordActualResponse()
-	assert.NotNil(t, actualResponse)
-	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedMetadata)
-	actualStoredRevision := recordStoredRevision()
-	assert.NotNil(t, actualStoredRevision.Id)
-	assert.Equal(t, expectedMetadata.Size, actualStoredRevision.Size)
-	assert.Equal(t, expectedMetadata.MediaType, actualStoredRevision.MediaType)
 	actualStoredRevisionId := recordStoredRevisionId()
-	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
-	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
+	assertUuidIsGenerated(t, actualStoredRevisionId)
+	actualStoredRevision := recordStoredRevision()
+	assertNewStoredRevision(t, actualStoredRevision, expectedMetadata)
+	assertStoreNewRevision(t, recordActualResponse(), existingFileId, actualStoredRevision)
 }
 
 func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
@@ -202,24 +170,11 @@ func TestStoreFile_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffB
 	actualError := sut.StoreFile(mockStream)
 
 	assert.Nil(t, actualError)
-	actualResponse := recordActualResponse()
-	assert.NotNil(t, actualResponse)
-	assert.NotNil(t, actualResponse.StoredFile)
-	assert.NotNil(t, actualResponse.StoredFile.Id)
-	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
-	assertMetadata(t, actualResponse.StoredFile.Metadata, expecedMetada)
-	storedFileMetadata := recordStoredFileMetadata()
-	assert.NotNil(t, storedFileMetadata)
-	assert.NotNil(t, storedFileMetadata.Id)
-	assert.NotNil(t, storedFileMetadata.Revisions)
-	assert.Len(t, storedFileMetadata.Revisions, 1)
-	assert.NotNil(t, storedFileMetadata.Revisions[0].Id)
-	assert.Equal(t, expecedMetada.Size, storedFileMetadata.Revisions[0].Size)
-	assert.Equal(t, expecedMetada.MediaType, storedFileMetadata.Revisions[0].MediaType)
-	assert.Equal(t, expecedMetada.Extension, storedFileMetadata.Revisions[0].Extension)
-	assert.NotNil(t, storedFileMetadata.Revisions[0].CreatedAt)
-
-	assertStoredIdAreNotNil(t, recordStoredFileId)
+	actualStoredFileId, actualStoredRevisionId := recordStoredFileId()
+	assertUuidIsGenerated(t, actualStoredFileId)
+	assertUuidIsGenerated(t, actualStoredRevisionId)
+	assertNewStoredFileMetadata(t, recordStoredFileMetadata(), expecedMetada)
+	assertStoreNewFile(t, recordActualResponse(), actualStoredFileId, actualStoredRevisionId, expecedMetada)
 }
 
 func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512SniffBytes(t *testing.T) {
@@ -227,12 +182,11 @@ func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512Sn
 	sentFile := fixture.PdfFile()
 	chunks := fixture.SplitIntoChunks(sentFile, 256)
 	sentFileName := "test.pdf"
-	expectedMetada := ExpectedMetadata{
+	expectedMetadata := ExpectedMetadata{
 		Size:      51124,
 		MediaType: "application/pdf",
 		Extension: ".pdf",
 	}
-
 	mockStream := fixture.CreateStoreRevisionStream(t)
 	mockStream.SetupSuccessfulSend(t, existingFileId, sentFileName, chunks)
 	recordActualResponse := mockStream.SetupSendAndClose(t)
@@ -241,28 +195,17 @@ func TestStoreRevision_FileDataIsSentInMultipleChunks_FileSizeIsSmallerThan512Sn
 	mockFileRepository := NewMockFileRepository(t)
 	recordStoredRevisionId := mockFileRepository.setupCreateFileNewRevision(t, existingFileId, fileWriter)
 	mockFileMetadataRepository := NewMockFileMetadataRepository(t)
-	recordStoreRevision := mockFileMetadataRepository.setupStoreRevisionMetadata(t, existingFileId)
+	recordStoredRevision := mockFileMetadataRepository.setupStoreRevisionMetadata(t, existingFileId)
 
 	sut := createSut(t, mockFileRepository, mockFileMetadataRepository)
 	actualError := sut.StoreRevision(mockStream)
 
 	assert.Nil(t, actualError)
-	actualResponse := recordActualResponse()
-	assert.NotNil(t, actualResponse)
-	assert.NotNil(t, actualResponse.StoredFile)
-	assert.NotNil(t, actualResponse.StoredFile.Id)
-	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
-	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedMetada)
-	actualStoredRevision := recordStoreRevision()
-	assert.NotNil(t, actualStoredRevision.Id)
-	assert.Equal(t, expectedMetada.Size, actualStoredRevision.Size)
-	assert.Equal(t, expectedMetada.MediaType, actualStoredRevision.MediaType)
-	assert.Equal(t, expectedMetada.Extension, actualStoredRevision.Extension)
-	assert.NotNil(t, actualStoredRevision.CreatedAt)
-
 	actualStoredRevisionId := recordStoredRevisionId()
 	assertUuidIsGenerated(t, actualStoredRevisionId)
-	assert.Equal(t, actualStoredRevisionId.String(), actualResponse.StoredFile.RevisionId.Value)
+	actualStoredRevision := recordStoredRevision()
+	assertNewStoredRevision(t, actualStoredRevision, expectedMetadata)
+	assertStoreNewRevision(t, recordActualResponse(), existingFileId, actualStoredRevision)
 }
 
 func TestStoreFile_FileNameIsInvalid_FileIsRejected(t *testing.T) {
@@ -371,7 +314,7 @@ func TestStoreRevision_CommunicationError_ChunckRequest_RetryIsRequested(t *test
 
 	actualStatus := assertGrpcError(t, codes.Internal, actualError)
 	assert.Contains(t, actualStatus.Message(), "retry")
-	assert.NotEqual(t, uuid.Nil, recordStoredRevisionId())
+	assertUuidIsGenerated(t, recordStoredRevisionId())
 }
 
 func TestStoreFile_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T) {
@@ -397,8 +340,8 @@ func TestStoreFile_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T
 	actualStatus := assertGrpcError(t, codes.Internal, actualError)
 	assert.Contains(t, actualStatus.Message(), "retry")
 	assert.Contains(t, actualStatus.Message(), "response")
-	assert.NotNil(t, recordStoredFileMetadata())
 	assertStoredIdAreNotNil(t, recordStoredFileId)
+	assert.NotNil(t, recordStoredFileMetadata())
 }
 
 func TestStoreRevision_CommunicationError_SendAndClose_RetryIsRequested(t *testing.T) {
@@ -1453,8 +1396,8 @@ func assertGrpcError(t *testing.T, expectedCode codes.Code, actualError error) *
 func assertStoredIdAreNotNil(t *testing.T, recordStoredIds func() (uuid.UUID, uuid.UUID)) {
 	t.Helper()
 	actualStoredFileId, actualStoredRevisionId := recordStoredIds()
-	assert.NotEqual(t, uuid.Nil, actualStoredFileId)
-	assert.NotEqual(t, uuid.Nil, actualStoredRevisionId)
+	assertUuidIsGenerated(t, actualStoredFileId)
+	assertUuidIsGenerated(t, actualStoredRevisionId)
 }
 
 func assertNewStoredRevision(t *testing.T, actualStoredRevision Revision, expectedMetada ExpectedMetadata) {
@@ -1472,4 +1415,43 @@ func assertUuidIsGenerated(t *testing.T, actualUuid uuid.UUID) {
 	assert.NotEqual(t, uuid.Nil, actualUuid)
 	assert.Equal(t, uuid.Version(0x4), actualUuid.Version())
 	assert.Equal(t, uuid.RFC4122, actualUuid.Variant())
+}
+
+func assertNewStoredFileMetadata(t *testing.T, storedFileMetadata FileMetadata, expectedMetadata ExpectedMetadata) {
+	t.Helper()
+	assert.NotNil(t, storedFileMetadata)
+	assertUuidIsGenerated(t, storedFileMetadata.Id)
+	assert.NotNil(t, storedFileMetadata.Revisions)
+	assert.Len(t, storedFileMetadata.Revisions, 1)
+	assertUuidIsGenerated(t, storedFileMetadata.Revisions[0].Id)
+	assert.Equal(t, expectedMetadata.Size, storedFileMetadata.Revisions[0].Size)
+	assert.Equal(t, expectedMetadata.MediaType, storedFileMetadata.Revisions[0].MediaType)
+	assert.Equal(t, expectedMetadata.Extension, storedFileMetadata.Revisions[0].Extension)
+	assert.NotNil(t, storedFileMetadata.Revisions[0].CreatedAt)
+}
+
+func assertStoreNewFile(t *testing.T, actualResponse *apiRestaurantFile.StoreFileResponse, storedFileId uuid.UUID, storedRevsionId uuid.UUID, expectedMetadata ExpectedMetadata) {
+	t.Helper()
+	assert.NotNil(t, actualResponse)
+	assert.NotNil(t, actualResponse.StoredFile)
+	assert.NotNil(t, actualResponse.StoredFile.Id)
+	assert.Equal(t, storedFileId.String(), actualResponse.StoredFile.Id.Value)
+	assert.NotNil(t, actualResponse.StoredFile.RevisionId)
+	assert.Equal(t, storedRevsionId.String(), actualResponse.StoredFile.RevisionId.Value)
+	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedMetadata)
+}
+
+func assertStoreNewRevision(t *testing.T, actualResponse *apiRestaurantFile.StoreFileResponse, existingFileId uuid.UUID, storedRevision Revision) {
+	t.Helper()
+	assert.NotNil(t, actualResponse)
+	assert.NotNil(t, actualResponse.StoredFile)
+	assert.NotNil(t, actualResponse.StoredFile.Id)
+	assert.Equal(t, existingFileId.String(), actualResponse.StoredFile.Id.Value)
+	assert.Equal(t, storedRevision.Id.String(), actualResponse.StoredFile.RevisionId.Value)
+	expectedMetadata := ExpectedMetadata{
+		Size:      storedRevision.Size,
+		MediaType: storedRevision.MediaType,
+		Extension: storedRevision.Extension,
+	}
+	assertMetadata(t, actualResponse.StoredFile.Metadata, expectedMetadata)
 }
