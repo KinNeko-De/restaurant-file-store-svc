@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/google/uuid"
+	apiProtobuf "github.com/kinneko-de/api-contract/golang/kinnekode/protobuf"
 	apiRestaurantFile "github.com/kinneko-de/api-contract/golang/kinnekode/restaurant/file/v1"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc/codes"
@@ -51,14 +52,27 @@ func sendChunks(fileReader io.ReadCloser, stream apiRestaurantFile.FileService_D
 	return nil
 }
 
-func sendMetadata(stream apiRestaurantFile.FileService_DownloadFileServer, revision Revision) error {
+func sendMetadata(stream apiRestaurantFile.FileService_DownloadFileServer, fileId uuid.UUID, revision Revision) error {
+	fileIdToSend, err := apiProtobuf.ToProtobuf(fileId)
+	if err != nil {
+		return err
+	}
+	revisionIdToSend, err := apiProtobuf.ToProtobuf(revision.Id)
+	if err != nil {
+		return err
+	}
+
 	return stream.Send(&apiRestaurantFile.DownloadFileResponse{
-		Part: &apiRestaurantFile.DownloadFileResponse_Metadata{
-			Metadata: &apiRestaurantFile.StoredFileMetadata{
-				CreatedAt: timestamppb.New(revision.CreatedAt),
-				Size:      revision.Size,
-				MediaType: revision.MediaType,
-				Extension: revision.Extension,
+		Part: &apiRestaurantFile.DownloadFileResponse_StoredFile{
+			StoredFile: &apiRestaurantFile.StoredFile{
+				Id:         fileIdToSend,
+				RevisionId: revisionIdToSend,
+				Metadata: &apiRestaurantFile.StoredFile_Metadata{
+					CreatedAt: timestamppb.New(revision.CreatedAt),
+					Size:      revision.Size,
+					MediaType: revision.MediaType,
+					Extension: revision.Extension,
+				},
 			},
 		},
 	})
