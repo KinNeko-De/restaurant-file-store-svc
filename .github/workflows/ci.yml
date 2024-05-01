@@ -5,7 +5,7 @@ on:
       - 'documentation/**'
 
 env:
-  MAJOR_MINOR_PATCH: 0.5.1
+  MAJOR_MINOR_PATCH: 0.5.2
   GIN_MODE: release
   MAIN_PACKAGE: 'cmd/file-store-svc/main.go'
 
@@ -25,6 +25,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '^1.22.2'
+          cache: true
       - name: "Installed go version"
         run: go version
       - name: Version suffix
