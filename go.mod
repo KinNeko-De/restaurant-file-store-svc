@@ -7,8 +7,8 @@ require (
 	github.com/go-logr/zerologr v1.2.3
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
-	github.com/kinneko-de/api-contract/golang/kinnekode/protobuf v0.2.7
-	github.com/kinneko-de/api-contract/golang/kinnekode/restaurant v0.0.3-store-files.7
+	github.com/kinneko-de/api-contract/golang/kinnekode/protobuf v0.2.9
+	github.com/kinneko-de/api-contract/golang/kinnekode/restaurant v0.1.0
 	github.com/rs/zerolog v1.32.0
 	github.com/stretchr/testify v1.9.0
 	go.mongodb.org/mongo-driver v1.15.0
