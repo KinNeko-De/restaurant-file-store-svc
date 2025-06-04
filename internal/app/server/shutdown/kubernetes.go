@@ -11,3 +11,18 @@ func CreateGracefulStop() chan os.Signal {
 	signal.Notify(gracefulStop, syscall.SIGTERM, syscall.SIGINT)
 	return gracefulStop
 }
+
+// HandleGracefulShutdown creates a goroutine that listens for shutdown signals and executes
+// the provided shutdownFunc when received, then closes the doneChan to signal completion
+func HandleGracefulShutdown(doneChan chan struct{}, shutdownFunc func()) {
+	go func() {
+		gracefulStop := CreateGracefulStop()
+		<-gracefulStop
+
+		if shutdownFunc != nil {
+			shutdownFunc()
+		}
+
+		close(doneChan)
+	}()
+}

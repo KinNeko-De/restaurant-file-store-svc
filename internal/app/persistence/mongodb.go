@@ -2,8 +2,6 @@ package persistence
 
 import (
 	"context"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
@@ -27,7 +25,10 @@ func ConnectToMongoDB(ctx context.Context, databaseConnected chan struct{}, data
 		close(databaseDisconnected)
 		return nil, err
 	}
-	go listenToGracefulShutdown(ctx, mongoDBRepository.client, databaseDisconnected)
+
+	shutdown.HandleGracefulShutdown(databaseDisconnected, func() {
+		mongoDBRepository.client.Disconnect(ctx)
+	})
 
 	close(databaseConnected)
 	return mongoDBRepository, nil
@@ -43,22 +44,13 @@ func initializeMongoDbFileMetadataRepository(ctx context.Context, config MongoDB
 	return fileMetadataRepository, err
 }
 
-func listenToGracefulShutdown(ctx context.Context, client *mongo.Client, databaseDisconnected chan struct{}) {
-	gracefulShutdown := shutdown.CreateGracefulStop()
-	<-gracefulShutdown
-	client.Disconnect(ctx)
-	close(databaseDisconnected)
-}
-
 func createClient(ctx context.Context, config MongoDBConfig) (*mongo.Client, error) {
-	gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
-	defer cancel()
-	client, err := CreateMongoDBClient(gracefulAbort, config)
+	client, err := CreateMongoDBClient(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
-	err = client.Ping(gracefulAbort, nil)
+	err = client.Ping(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
