@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"os"
 
 	"cloud.google.com/go/storage"
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/server/shutdown"
@@ -17,7 +18,7 @@ func ConnectToGoogleCloudStorage(ctx context.Context, storageConnected chan stru
 		return &GoogleCloudStorageFileRepository{}, err
 	}
 
-	shutdown.HandleGracefulShutdown(storageDisconnected, func() {
+	shutdown.HandleGracefulShutdown(storageDisconnected, func(os.Signal) {
 		client.Close()
 	})
 

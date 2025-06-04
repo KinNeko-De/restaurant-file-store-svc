@@ -2,6 +2,9 @@ package persistence
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
@@ -26,7 +29,7 @@ func ConnectToMongoDB(ctx context.Context, databaseConnected chan struct{}, data
 		return nil, err
 	}
 
-	shutdown.HandleGracefulShutdown(databaseDisconnected, func() {
+	shutdown.HandleGracefulShutdown(databaseDisconnected, func(os.Signal) {
 		mongoDBRepository.client.Disconnect(ctx)
 	})
 
@@ -45,7 +48,9 @@ func initializeMongoDbFileMetadataRepository(ctx context.Context, config MongoDB
 }
 
 func createClient(ctx context.Context, config MongoDBConfig) (*mongo.Client, error) {
-	client, err := CreateMongoDBClient(ctx, config)
+	gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
+	client, err := CreateMongoDBClient(gracefulAbort, config)
 	if err != nil {
 		return nil, err
 	}
