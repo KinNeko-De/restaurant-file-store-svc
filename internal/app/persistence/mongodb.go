@@ -50,12 +50,12 @@ func initializeMongoDbFileMetadataRepository(ctx context.Context, config MongoDB
 func createClient(ctx context.Context, config MongoDBConfig) (*mongo.Client, error) {
 	gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
-	client, err := CreateMongoDBClient(gracefulAbort, config)
+	client, err := CreateMongoDBClient(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
-	err = client.Ping(ctx, nil)
+	err = client.Ping(gracefulAbort, nil)
 	if err != nil {
 		return nil, err
 	}
