@@ -41,7 +41,7 @@ type StoreFileRequest struct {
 func (w StoreFileRequest) GetChunk() ([]byte, error) {
 	chunk := w.request.GetChunk()
 	if chunk == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "PartCase of type 'fileServiceApi.StoreFileRequest_Chunk' expected. Actual value is "+reflect.TypeOf(w.request.Part).String()+".")
+		return nil, status.Errorf(codes.InvalidArgument, "PartCase of type 'fileServiceApi.StoreFileRequest_Chunk' expected. Actual value is %s.", reflect.TypeOf(w.request.Part).String())
 	}
 	return chunk, nil
 }
@@ -53,7 +53,7 @@ type StoreRevisionRequest struct {
 func (w StoreRevisionRequest) GetChunk() ([]byte, error) {
 	chunk := w.request.GetChunk()
 	if chunk == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "PartCase of type 'fileServiceApi.StoreRevisionRequest_Chunk' expected. Actual value is "+reflect.TypeOf(w.request.Part).String()+".")
+		return nil, status.Errorf(codes.InvalidArgument, "PartCase of type 'fileServiceApi.StoreRevisionRequest_Chunk' expected. Actual value is %s.", reflect.TypeOf(w.request.Part).String())
 	}
 	return chunk, nil
 }
