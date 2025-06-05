@@ -49,7 +49,7 @@ func receiveMetadata(stream apiRestaurantFile.FileService_StoreFileServer) (*api
 
 	msg := firstRequest.GetStoreFile()
 	if msg == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "PartCase of type 'fileServiceApi.StoreFileRequest_StoreFile' expected. Actual value is "+reflect.TypeOf(firstRequest.Part).String()+".")
+		return nil, status.Errorf(codes.InvalidArgument, "PartCase of type 'fileServiceApi.StoreFileRequest_StoreFile' expected. Actual value is %s.", reflect.TypeOf(firstRequest.Part).String())
 	}
 	return msg, nil
 }
@@ -63,7 +63,7 @@ func receiveRevisionMetadata(stream apiRestaurantFile.FileService_StoreRevisionS
 
 	msg := firstRequest.GetStoreRevision()
 	if msg == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "PartCase of type 'fileServiceApi.StoreRevisionRequest_StoreRevision' expected. Actual value is "+reflect.TypeOf(firstRequest.Part).String()+".")
+		return nil, status.Errorf(codes.InvalidArgument, "PartCase of type 'fileServiceApi.StoreRevisionRequest_StoreRevision' expected. Actual value is %s.", reflect.TypeOf(firstRequest.Part).String())
 	}
 	return msg, nil
 }
