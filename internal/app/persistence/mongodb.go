@@ -3,8 +3,6 @@ package persistence
 import (
 	"context"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/kinneko-de/restaurant-file-store-svc/internal/app/file"
@@ -48,8 +46,9 @@ func initializeMongoDbFileMetadataRepository(ctx context.Context, config MongoDB
 }
 
 func createClient(ctx context.Context, config MongoDBConfig) (*mongo.Client, error) {
-	gracefulAbort, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
+	gracefulAbort, cancel := shutdown.CreateCancellableContext(ctx)
 	defer cancel()
+
 	client, err := CreateMongoDBClient(ctx, config)
 	if err != nil {
 		return nil, err
