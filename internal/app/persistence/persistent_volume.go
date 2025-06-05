@@ -27,8 +27,7 @@ func ConnectToPersistentVolume(ctx context.Context, storageConnected chan struct
 
 	close(storageConnected)
 
-	go PersistentVolumeListenToGracefulShutdown(storageDisconnected)
-
+	shutdown.HandleGracefulShutdown(storageDisconnected, nil)
 	return &PersistentVolumeFileRepository{StoragePath: config.Path}, nil
 }
 
@@ -49,10 +48,4 @@ func EnsureDirectoryIsWritable(config PersistentVolumeConfig) error {
 	file.Close()
 	os.Remove(configTestFilePath)
 	return nil
-}
-
-func PersistentVolumeListenToGracefulShutdown(storageDisconnected chan struct{}) {
-	gracefulShutdown := shutdown.CreateGracefulStop()
-	<-gracefulShutdown
-	close(storageDisconnected)
 }

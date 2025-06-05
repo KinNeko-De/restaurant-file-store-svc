@@ -40,7 +40,6 @@ func startGrpcServer(grpcServerStarted chan struct{}, grpcServerStopped chan str
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	health.Initialize(healthServer)
 
-	var gracefulStop = shutdown.CreateGracefulStop()
 	logger.Logger.Debug().Msg("starting grpc server")
 
 	go func() {
@@ -51,11 +50,11 @@ func startGrpcServer(grpcServerStarted chan struct{}, grpcServerStopped chan str
 	}()
 	close(grpcServerStarted)
 
-	stop := <-gracefulStop
-	healthServer.Shutdown()
-	grpcServer.GracefulStop()
-	logger.Logger.Debug().Msgf("http server stopped. received signal %s", stop)
-	close(grpcServerStopped)
+	shutdown.HandleGracefulShutdown(grpcServerStopped, func(stop os.Signal) {
+		healthServer.Shutdown()
+		grpcServer.GracefulStop()
+		logger.Logger.Debug().Msgf("http server stopped. received signal %s", stop)
+	})
 }
 
 func configureGrpcServer() *grpc.Server {
