@@ -23,7 +23,7 @@ Always use the newest stable versions of GitHub Actions in workflows. When updat
 
 Step-by-step process for updating action versions (minimize premium/trial requests):
 1. Search the workflow files under `.github/workflows/` for `uses:` entries that reference third-party actions.
-2. For each action, visit the action's official repository or the Marketplace page to find the latest stable release tag. Prefer a pinned MAJOR tag (for example `actions/checkout@v4`). Avoid pinning to an exact patch (for example `@v4.0.0`) unless you need fully reproducible runs — major-only tags receive compatible non-breaking updates (minor/patch) and are easier to maintain. When a new major release is available, evaluate compatibility and bump the major tag if safe. A successful pipeline run is needed to complete a pull request. You can do network calls for that.
+2. For each action, visit the action's official repository release page to find the latest stable release tag. Prefer a pinned MAJOR tag (for example `actions/checkout@v4`). Avoid pinning to an exact patch (for example `@v4.0.0`) unless you need fully reproducible runs — major-only tags receive compatible non-breaking updates (minor/patch) and are easier to maintain. When a new major release is available, evaluate compatibility and bump the major tag if safe. A successful pipeline run is needed to complete a pull request. You can do network calls for that.
 3. Update the workflow to the new tag. Example replacements:
 	- `actions/checkout@v3` → `actions/checkout@v4`
 	- `actions/setup-go@v4` → `actions/setup-go@v5`
