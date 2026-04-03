@@ -5,7 +5,9 @@ on:
       - 'documentation/**'
 
 env:
-  MAJOR_MINOR_PATCH: 0.7.0
+  MAJOR: 0
+  MINOR: 7
+  PATCH: 0
   GIN_MODE: release
   MAIN_PACKAGE: 'cmd/file-store-svc/main.go'
 
@@ -28,51 +30,36 @@ jobs:
           cache: true
       - name: "Installed go version"
         run: go version
-      - name: Version suffix
-        id: version_suffix
-        run: |
-          if [[ ${{ github.event_name }} == 'pull_request' ]]; then
-            echo 'for pull request pipeline'
-            USE=true
-            SUFFIX=${GITHUB_HEAD_REF##*/}.${{github.run_number}}
-            EXTENSION="-${SUFFIX}"
-          else
-            if [[ ${{ github.ref }} == "refs/heads/${{ github.event.repository.default_branch }}" ]]; then
-              echo 'for default branch pipeline'
-              USE=false
-              SUFFIX=''
-              EXTENSION=''
-          else
-              echo 'for feature branch pipeline'
-              USE=true
-              SUFFIX=${GITHUB_REF##*/}.${{github.run_number}}
-              EXTENSION="-${SUFFIX}"
-            fi
-          fi
-          echo 'use_version_suffix' $USE
-          echo 'version_suffix: ' $SUFFIX
-          echo "use_version_suffix=$USE" >> $GITHUB_OUTPUT
-          echo "version_suffix=$SUFFIX" >> $GITHUB_OUTPUT
-          echo "extension=$EXTENSION" >> $GITHUB_OUTPUT
-      - name: Semantic version
+
+      - name: Compute semantic version
         id: semantic_version
+        uses: KinNeko-De/compute-semantic-version-action@v1
+        with:
+          major: ${{ env.MAJOR }}
+          minor: ${{ env.MINOR }}
+          patch: ${{ env.PATCH }}
+
+      - name: Prepare git tags
+        id: prepare_tag
         run: |
-          SEMANTIC_VERSION="${{ env.MAJOR_MINOR_PATCH }}"
-          SEMANTIC_VERSION="${SEMANTIC_VERSION}${{ steps.version_suffix.outputs.extension }}"
-          echo 'MAJOR_MINOR_PATCH: ' $MAJOR_MINOR_PATCH
-          echo 'SEMANTIC_VERSION: ' $SEMANTIC_VERSION
-          echo "semantic_version=$SEMANTIC_VERSION" >> $GITHUB_OUTPUT
-          echo "major_minor_patch=$MAJOR_MINOR_PATCH" >> $GITHUB_OUTPUT
-      - name: "Version upgraded?"
+          echo "git_tag=v${{ steps.semantic_version.outputs.semantic_version }}" >> $GITHUB_OUTPUT
+          echo "git_tag_major=v${{ env.MAJOR }}" >> $GITHUB_OUTPUT
+      
+      - name: 'Version upgraded?'
         id: version_check
         run: |
-          git fetch --prune --unshallow --tags > /dev/null 2>&1
-          last_main_version=$(git tag --list 'v[0-9]*\.[0-9]*\.[0-9]*' | grep -Pv "v[0-9]*\.[0-9]*\.[0-9]*-" | sort -V | tail -n 1)
-          echo "Compare last main version: $last_main_version with current version: v$MAJOR_MINOR_PATCH"
-          if [[ $(echo -e "v$MAJOR_MINOR_PATCH\n$last_main_version" | sort -V | head -n 1) == "v$MAJOR_MINOR_PATCH" ]]; then
-            echo "Please upgrade the version number to a higher value than $last_main_version"
-            exit 1
+          current_version="v${{ steps.semantic_version.outputs.next_default_branch_version }}"
+          last_main_version=$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          if [[ -z "$last_main_version" ]]; then
+            echo "No previous version found, proceeding..."
+          else
+            echo "Compare last main version: $last_main_version with current version: $current_version"
+            if [[ $(echo -e "$current_version\n$last_main_version" | sort -V | head -n 1) == "$current_version" ]]; then
+              echo "Please upgrade the version number to a higher value than $last_main_version"
+              exit 1
+            fi
           fi
+          
       - name: Write version txt
         id: version_txt
         run: |
