@@ -22,9 +22,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '^1.26'
           cache: true
@@ -95,19 +95,19 @@ jobs:
           grep -v -E -f .covignore acceptance_coverage.out > acceptance_coverage.filtered.out
           mv acceptance_coverage.filtered.out acceptance_coverage.out
       - name: "Code coverage" # known bug that files parameter is ignored https://github.com/codecov/codecov-action/issues/1285, upload all files
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
       - name: "Build artifacts"
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./build/dockerfile
           push: false
           tags: ${{ steps.semantic_version.outputs.semantic_version }} # on push later
       - name: Create semantic versioning git tag for golang
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             github.rest.git.createRef({
